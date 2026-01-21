@@ -9,3 +9,6 @@ dist-ssr
 .cache
 server/dist
 public/dist
+
+# Design System (reference only, not tracked)
+apps/Debs Insurance Design System/
