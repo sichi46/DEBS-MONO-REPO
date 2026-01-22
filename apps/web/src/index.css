@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* DEBS Insurance Design System - Colors */
+  --color-background: #F7F9FC;
+  --color-foreground: #1A202C;
+
+  --color-card: #ffffff;
+  --color-card-foreground: #1A202C;
+
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1A202C;
+
+  --color-primary: #0057B7;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #E8F1FA;
+  --color-secondary-foreground: #0057B7;
+
+  --color-muted: #E2E8F0;
+  --color-muted-foreground: #64748B;
+
+  --color-accent: #E8F1FA;
+  --color-accent-foreground: #0057B7;
+
+  --color-destructive: #DC3545;
+  --color-destructive-foreground: #ffffff;
+
+  --color-success: #28A745;
+  --color-success-foreground: #ffffff;
+
+  --color-warning: #FFC107;
+  --color-warning-foreground: #1A202C;
+
+  --color-border: #CBD5E0;
+  --color-input: #ffffff;
+  --color-input-background: #ffffff;
+  --color-ring: #0057B7;
+
+  /* Sidebar */
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #1A202C;
+  --color-sidebar-primary: #0057B7;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #E8F1FA;
+  --color-sidebar-accent-foreground: #0057B7;
+  --color-sidebar-border: #E2E8F0;
+
+  /* Charts */
+  --color-chart-1: #0057B7;
+  --color-chart-2: #28A745;
+  --color-chart-3: #FFC107;
+  --color-chart-4: #DC3545;
+  --color-chart-5: #64748B;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+/* Dark mode */
+.dark {
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+
+  --color-card: #1e293b;
+  --color-card-foreground: #f8fafc;
+
+  --color-popover: #1e293b;
+  --color-popover-foreground: #f8fafc;
+
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f8fafc;
+
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+
+  --color-accent: #1e293b;
+  --color-accent-foreground: #f8fafc;
+
+  --color-destructive: #7f1d1d;
+  --color-destructive-foreground: #f8fafc;
+
+  --color-success: #166534;
+  --color-success-foreground: #ffffff;
+
+  --color-warning: #ca8a04;
+  --color-warning-foreground: #1A202C;
+
+  --color-border: #1e293b;
+  --color-input: #1e293b;
+  --color-input-background: #1e293b;
+  --color-ring: #3b82f6;
+
+  /* Sidebar - Dark */
+  --color-sidebar: #1e293b;
+  --color-sidebar-foreground: #f8fafc;
+  --color-sidebar-primary: #3b82f6;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #1e293b;
+  --color-sidebar-accent-foreground: #f8fafc;
+  --color-sidebar-border: #1e293b;
+
+  /* Charts - Dark */
+  --color-chart-1: #3b82f6;
+  --color-chart-2: #22c55e;
+  --color-chart-3: #eab308;
+  --color-chart-4: #ef4444;
+  --color-chart-5: #6b7280;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Animations for accordion and other components */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
+  }
+}
