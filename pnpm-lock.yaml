@@ -8,9 +8,6 @@ importers:
 
   .:
     devDependencies:
-      '@rollup/rollup-win32-x64-msvc':
-        specifier: ^4.56.0
-        version: 4.56.0
       eslint:
         specifier: ^8.57.0
         version: 8.57.1
@@ -2541,7 +2538,9 @@ packages:
     resolution: {integrity: sha512-H8AE9Ur/t0+1VXujj90w0HrSOuv0Nq9r1vSZF2t5km20NTfosQsGGUXDaKdQZzwuLts7IyL1fYT4hM95TI9c4g==}
     cpu: [x64]
     os: [win32]
+    requiresBuild: true
     dev: true
+    optional: true
 
   /@tailwindcss/node@4.1.18:
     resolution: {integrity: sha512-DoR7U1P7iYhw16qJ49fgXUlry1t4CpXeErJHnQ44JgTSKMaZUdf17cfn5mHchfJ4KRBZRFA/Coo+MUF5+gOaCQ==}
