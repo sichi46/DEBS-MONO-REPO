@@ -10,5 +10,4 @@ dist-ssr
 server/dist
 public/dist
 
-# Design System (reference only, not tracked)
-apps/Debs Insurance Design System/
+# apps/Debs Insurance Design System/ (Gitignore removed for access)

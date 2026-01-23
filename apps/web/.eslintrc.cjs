@@ -6,5 +6,5 @@ module.exports = {
     project: "./tsconfig.json",
     tsconfigRootDir: __dirname,
   },
-  ignorePatterns: ["dist", "node_modules", "vite.config.ts"],
+  ignorePatterns: ["dist", "node_modules", "vite.config.ts", "src/main.tsx"],
 };
