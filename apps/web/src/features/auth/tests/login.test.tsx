@@ -93,8 +93,23 @@ describe("LoginForm", () => {
             mockLogin.mockResolvedValue({
                 success: true,
                 data: {
-                    token: "mock-token",
-                    user: { id: "1", email: "test@example.com", name: "Test" },
+                    user: {
+                        id: "1",
+                        email: "test@example.com",
+                        name: "Test",
+                        phone: null,
+                        address: null,
+                        avatarUrl: null,
+                        role: "USER",
+                        status: "ACTIVE",
+                        emailVerified: true,
+                        createdAt: new Date().toISOString(),
+                        lastLoginAt: null,
+                    },
+                    tokens: {
+                        accessToken: "mock-access-token",
+                        refreshToken: "mock-refresh-token",
+                    },
                 },
             });
 
