@@ -1,204 +1,200 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { useSetRecoilState } from "recoil";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
 import { authApi } from "../api";
-import { userAtom, tokenAtom, isAuthenticatedAtom } from "../state/atoms";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Shield } from "lucide-react";
+import { userAtom, accessTokenAtom, refreshTokenAtom, isAuthenticatedAtom } from "../state/atoms";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
+import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 
 export function RegisterForm() {
-    const navigate = useNavigate();
-    const setUser = useSetRecoilState(userAtom);
-    const setToken = useSetRecoilState(tokenAtom);
-    const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
+  const navigate = useNavigate();
+  const setUser = useSetRecoilState(userAtom);
+  const setAccessToken = useSetRecoilState(accessTokenAtom);
+  const setRefreshToken = useSetRecoilState(refreshTokenAtom);
+  const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const [formData, setFormData] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: authApi.register,
+    onSuccess: (response) => {
+      if (response.success && response.data) {
+        const { user, tokens } = response.data;
+
+        // Store tokens
+        localStorage.setItem("accessToken", tokens.accessToken);
+        localStorage.setItem("refreshToken", tokens.refreshToken);
+
+        // Update state
+        setAccessToken(tokens.accessToken);
+        setRefreshToken(tokens.refreshToken);
+        setUser(user);
+        setIsAuthenticated(true);
+
+        toast.success("Account created successfully!");
+        navigate("/dashboard");
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Registration failed. Please try again.");
+    },
+  });
+
+  const onSubmit = (data: RegisterInput) => {
+    registerMutation.mutate({
+      name: data.name,
+      email: data.email,
+      password: data.password,
     });
+  };
 
-    const [apiError, setApiError] = useState<string | null>(null);
-
-    const registerMutation = useMutation({
-        mutationFn: authApi.register,
-        onSuccess: (data) => {
-            if (data.success && data.data) {
-                localStorage.setItem("token", data.data.token);
-                setToken(data.data.token);
-                setUser(data.data.user);
-                setIsAuthenticated(true);
-                navigate("/dashboard");
-            }
-        },
-        onError: (error: Error) => {
-            setApiError(error.message || "Registration failed. Please try again.");
-        },
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setApiError(null);
-
-        if (formData.password !== formData.confirmPassword) {
-            setApiError("Passwords do not match!");
-            return;
-        }
-
-        const name = `${formData.firstName} ${formData.lastName}`.trim();
-        if (!name) {
-            setApiError("Name is required");
-            return;
-        }
-
-        registerMutation.mutate({
-            name,
-            email: formData.email,
-            password: formData.password
-        });
-    };
-
-    return (
-        <div className="min-h-screen bg-[#F7F9FC] flex flex-col">
-            {/* Header */}
-            <header className="bg-white border-b border-[#E2E8F0]">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <button
-                            onClick={() => navigate("/")}
-                            className="flex items-center gap-2"
-                        >
-                            <div className="w-8 h-8 bg-[#0057B7] rounded-lg flex items-center justify-center">
-                                <Shield className="h-5 w-5 text-white" />
-                            </div>
-                            <span className="text-xl text-[#0057B7]">Debs Insurance</span>
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <div className="flex-1 flex items-center justify-center p-4">
-                <Card className="w-full max-w-md">
-                    <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl text-center">
-                            Create Your Account
-                        </CardTitle>
-                        <p className="text-center text-[#64748B]">
-                            Join Debs Insurance and secure your future
-                        </p>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="firstName">First Name</Label>
-                                    <Input
-                                        id="firstName"
-                                        name="firstName"
-                                        type="text"
-                                        placeholder="John"
-                                        value={formData.firstName}
-                                        onChange={handleChange}
-                                        required
-                                        className="bg-white"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="lastName">Last Name</Label>
-                                    <Input
-                                        id="lastName"
-                                        name="lastName"
-                                        type="text"
-                                        placeholder="Doe"
-                                        value={formData.lastName}
-                                        onChange={handleChange}
-                                        required
-                                        className="bg-white"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    placeholder="you@example.com"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    className="bg-white"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
-                                <Input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                    className="bg-white"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                                <Input
-                                    id="confirmPassword"
-                                    name="confirmPassword"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    required
-                                    className="bg-white"
-                                />
-                            </div>
-
-                            {apiError && (
-                                <div className="rounded-md bg-destructive/10 p-4 border border-destructive/20">
-                                    <p className="text-sm text-destructive">{apiError}</p>
-                                </div>
-                            )}
-
-                            <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                                {registerMutation.isPending ? "Creating Account..." : "Create Account"}
-                            </Button>
-
-                            <div className="text-center text-sm text-[#64748B]">
-                                Already have an account?{" "}
-                                <button
-                                    type="button"
-                                    onClick={() => navigate("/login")}
-                                    className="text-[#0057B7] hover:underline"
-                                >
-                                    Login
-                                </button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="bg-card border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Shield className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl text-primary font-semibold">Debs Insurance</span>
+            </Link>
+          </div>
         </div>
-    );
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">Create Your Account</CardTitle>
+            <p className="text-center text-muted-foreground">
+              Join Debs Insurance and secure your future
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  {...register("name")}
+                  className={errors.name ? "border-destructive" : ""}
+                />
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  {...register("email")}
+                  className={errors.email ? "border-destructive" : ""}
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...register("password")}
+                    className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Must be 8+ characters with uppercase, lowercase, and number
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    {...register("confirmPassword")}
+                    className={errors.confirmPassword ? "border-destructive pr-10" : "pr-10"}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                )}
+              </div>
+
+              <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                {registerMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
+              </Button>
+
+              <div className="text-center text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <Link to="/login" className="text-primary hover:underline">
+                  Login
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }
