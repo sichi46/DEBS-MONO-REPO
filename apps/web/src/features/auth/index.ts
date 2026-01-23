@@ -1,5 +1,35 @@
+// Components
 export { LoginForm } from "./components/LoginForm";
+export { RegisterForm } from "./components/RegisterForm";
+export { ProtectedRoute } from "./components/ProtectedRoute";
+
+// Routes
 export { AuthRoutes } from "./routes";
+
+// API
 export { authApi } from "./api";
-export { userAtom, tokenAtom, isAuthenticatedAtom, authStateAtom } from "./state/atoms";
-export type { User, AuthState, LoginCredentials, RegisterCredentials, AuthResponse } from "./types";
+
+// State
+export {
+  userAtom,
+  tokenAtom,
+  accessTokenAtom,
+  refreshTokenAtom,
+  isAuthenticatedAtom,
+  isLoadingAtom,
+  authStateAtom,
+} from "./state/atoms";
+
+// Types
+export type {
+  User,
+  UserRole,
+  UserStatus,
+  AuthState,
+  LoginCredentials,
+  RegisterCredentials,
+  AuthResponse,
+  ApiResponse,
+  TokenPair,
+  ProfileUpdateData,
+} from "./types";

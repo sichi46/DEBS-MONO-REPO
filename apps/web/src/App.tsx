@@ -1,5 +1,16 @@
-import { Route, Routes, Navigate } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+
+// Layout
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+
+// Landing
+import { LandingPage } from "./features/landing/LandingPage";
+
+// Auth
+import { LoginForm, RegisterForm, ProtectedRoute } from "./features/auth";
+
+// Dashboard Features
 import { DashboardOverview } from "./features/dashboard";
 import { PoliciesPage, PolicyDetailsPage } from "./features/policies";
 import { ClaimsPage, ClaimDetailsPage } from "./features/claims";
@@ -9,49 +20,76 @@ import { SettingsPage } from "./features/settings";
 
 // Admin imports
 import {
-    AdminLayout,
-    AnalyticsDashboard,
-    UsersPage,
-    AdminPoliciesPage,
-    AdminClaimsPage,
-    PaymentsOverviewPage,
-    AdminSettingsPage,
+  AdminLayout,
+  AnalyticsDashboard,
+  UsersPage,
+  AdminPoliciesPage,
+  AdminClaimsPage,
+  PaymentsOverviewPage,
+  AdminSettingsPage,
 } from "./features/admin";
 
 function App() {
-    return (
-        <div className="min-h-screen bg-background font-sans antialiased text-foreground">
-            <Routes>
-                {/* Redirect root to dashboard for now */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+  return (
+    <div className="min-h-screen bg-background font-sans antialiased text-foreground">
+      {/* Toast notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "hsl(var(--card))",
+            color: "hsl(var(--card-foreground))",
+            border: "1px solid hsl(var(--border))",
+          },
+          success: {
+            iconTheme: {
+              primary: "hsl(var(--success))",
+              secondary: "white",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "hsl(var(--destructive))",
+              secondary: "white",
+            },
+          },
+        }}
+      />
 
-                {/* Dashboard Routes - No protection during UI development */}
-                <Route path="/dashboard" element={<DashboardLayout />}>
-                    <Route index element={<DashboardOverview />} />
-                    <Route path="policies" element={<PoliciesPage />} />
-                    <Route path="policies/:policyNumber" element={<PolicyDetailsPage />} />
-                    <Route path="claims" element={<ClaimsPage />} />
-                    <Route path="claims/:claimId" element={<ClaimDetailsPage />} />
-                    <Route path="browse" element={<BrowsePoliciesPage />} />
-                    <Route path="browse/:policyId" element={<PolicyInfoPage />} />
-                    <Route path="payments" element={<PaymentsPage />} />
-                    <Route path="settings" element={<SettingsPage />} />
-                </Route>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<RegisterForm />} />
 
-                {/* Admin Routes - RBAC will be implemented with backend */}
-                <Route path="/admin" element={<AdminLayout />}>
-                    <Route index element={<AnalyticsDashboard />} />
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="policies" element={<AdminPoliciesPage />} />
-                    <Route path="claims" element={<AdminClaimsPage />} />
-                    <Route path="payments" element={<PaymentsOverviewPage />} />
-                    <Route path="settings" element={<AdminSettingsPage />} />
-                </Route>
-            </Routes>
-        </div>
-    );
+        {/* Protected Dashboard Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<DashboardOverview />} />
+            <Route path="policies" element={<PoliciesPage />} />
+            <Route path="policies/:policyNumber" element={<PolicyDetailsPage />} />
+            <Route path="claims" element={<ClaimsPage />} />
+            <Route path="claims/:claimId" element={<ClaimDetailsPage />} />
+            <Route path="browse" element={<BrowsePoliciesPage />} />
+            <Route path="browse/:policyId" element={<PolicyInfoPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+
+          {/* Admin Routes - RBAC will check user role */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AnalyticsDashboard />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="policies" element={<AdminPoliciesPage />} />
+            <Route path="claims" element={<AdminClaimsPage />} />
+            <Route path="payments" element={<PaymentsOverviewPage />} />
+            <Route path="settings" element={<AdminSettingsPage />} />
+          </Route>
+        </Route>
+      </Routes>
+    </div>
+  );
 }
 
 export default App;
-
-
