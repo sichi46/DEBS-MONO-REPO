@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { config, validateConfig } from "./config/index.js";
 import authRoutes from "./routes/auth.routes.js";
+import policiesRoutes from "./routes/policies.routes.js";
 import { sendError } from "./utils/response.js";
 
 // Validate required environment variables at startup
@@ -58,6 +59,7 @@ app.get("/health", (_req, res) => {
 // =============================================================================
 
 app.use("/api/auth", authRoutes);
+app.use("/api/policies", policiesRoutes);
 
 // =============================================================================
 // 404 Handler

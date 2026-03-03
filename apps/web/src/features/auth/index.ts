@@ -1,7 +1,11 @@
 // Components
 export { LoginForm } from "./components/LoginForm";
 export { RegisterForm } from "./components/RegisterForm";
+export { ForgotPasswordForm } from "./components/ForgotPasswordForm";
+export { ResetPasswordForm } from "./components/ResetPasswordForm";
 export { ProtectedRoute } from "./components/ProtectedRoute";
+export { AdminRoute } from "./components/AdminRoute";
+export { AuthInitializer } from "./components/AuthInitializer";
 
 // Routes
 export { AuthRoutes } from "./routes";
@@ -17,7 +21,6 @@ export {
   refreshTokenAtom,
   isAuthenticatedAtom,
   isLoadingAtom,
-  authStateAtom,
 } from "./state/atoms";
 
 // Types

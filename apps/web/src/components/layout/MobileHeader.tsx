@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
-import { useRecoilValue } from "recoil";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useState } from "react";
 import {
     Menu,
     LayoutDashboard,
@@ -10,8 +11,7 @@ import {
     LogOut,
 } from "lucide-react";
 
-import { userAtom } from "@/features/auth/state/atoms";
-import { mockUser } from "@/lib/mock-data";
+import { userAtom, accessTokenAtom, refreshTokenAtom, isAuthenticatedAtom } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 import {
     Sheet,
@@ -20,7 +20,6 @@ import {
     SheetTitle,
     SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState } from "react";
 
 const navigationItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -32,15 +31,29 @@ const navigationItems = [
 
 export function MobileHeader() {
     const location = useLocation();
+    const navigate = useNavigate();
     const user = useRecoilValue(userAtom);
+    const setUser = useSetRecoilState(userAtom);
+    const setAccessToken = useSetRecoilState(accessTokenAtom);
+    const setRefreshToken = useSetRecoilState(refreshTokenAtom);
+    const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
     const [open, setOpen] = useState(false);
 
-    // Use mock user if no user in state
-    const displayUser = user || mockUser;
+    // Generate user initials
+    const getInitials = (name: string | undefined) => {
+        if (!name) return "U";
+        return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    };
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        setUser(null);
+        setAccessToken(null);
+        setRefreshToken(null);
+        setIsAuthenticated(false);
+        setOpen(false);
+        navigate("/login");
     };
 
     const handleNavClick = () => {
@@ -91,11 +104,10 @@ export function MobileHeader() {
                                     key={item.path}
                                     to={item.path}
                                     onClick={handleNavClick}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                                        isActive
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
                                             ? "bg-primary text-primary-foreground"
                                             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                                    }`}
+                                        }`}
                                 >
                                     <Icon className="h-5 w-5" />
                                     {item.name}
@@ -108,14 +120,14 @@ export function MobileHeader() {
                     <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-card">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                                {displayUser.name?.charAt(0) || "U"}
+                                {getInitials(user?.name)}
                             </div>
                             <div className="flex flex-col min-w-0">
                                 <span className="text-sm font-medium text-foreground truncate">
-                                    {displayUser.name}
+                                    {user?.name || "User"}
                                 </span>
                                 <span className="text-xs text-muted-foreground truncate">
-                                    {displayUser.email}
+                                    {user?.email || ""}
                                 </span>
                             </div>
                         </div>

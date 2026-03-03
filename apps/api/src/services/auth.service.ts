@@ -1,7 +1,12 @@
 import { UserRole, UserStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword, comparePassword, generateResetToken, getResetTokenExpiry } from "../utils/password.js";
-import { generateTokenPair, verifyRefreshToken, getRefreshTokenExpiry } from "../utils/jwt.js";
+import {
+  generateTokenPair,
+  verifyRefreshToken,
+  getRefreshTokenExpiry,
+  hashRefreshToken,
+} from "../utils/jwt.js";
 import { JwtPayload, TokenPair, UserResponse } from "../types/index.js";
 
 // =============================================================================
@@ -100,10 +105,10 @@ export const authService = {
     };
     const tokens = generateTokenPair(payload);
 
-    // Store refresh token
+    // Store refresh token (hashed)
     await prisma.refreshToken.create({
       data: {
-        token: tokens.refreshToken,
+        tokenHash: hashRefreshToken(tokens.refreshToken),
         userId: user.id,
         expiresAt: getRefreshTokenExpiry(),
       },
@@ -156,10 +161,10 @@ export const authService = {
     };
     const tokens = generateTokenPair(payload);
 
-    // Store refresh token
+    // Store refresh token (hashed)
     await prisma.refreshToken.create({
       data: {
-        token: tokens.refreshToken,
+        tokenHash: hashRefreshToken(tokens.refreshToken),
         userId: user.id,
         expiresAt: getRefreshTokenExpiry(),
       },
@@ -182,9 +187,11 @@ export const authService = {
       throw new Error("Invalid or expired refresh token");
     }
 
+    const tokenHash = hashRefreshToken(refreshToken);
+
     // Check if token exists in database
     const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
+      where: { tokenHash },
       include: { user: true },
     });
 
@@ -214,10 +221,10 @@ export const authService = {
     };
     const tokens = generateTokenPair(newPayload);
 
-    // Store new refresh token
+    // Store new refresh token (hashed)
     await prisma.refreshToken.create({
       data: {
-        token: tokens.refreshToken,
+        tokenHash: hashRefreshToken(tokens.refreshToken),
         userId: storedToken.user.id,
         expiresAt: getRefreshTokenExpiry(),
       },
@@ -230,8 +237,9 @@ export const authService = {
    * Logout user (invalidate refresh token)
    */
   async logout(refreshToken: string): Promise<void> {
+    const tokenHash = hashRefreshToken(refreshToken);
     await prisma.refreshToken.deleteMany({
-      where: { token: refreshToken },
+      where: { tokenHash },
     });
   },
 
@@ -273,10 +281,6 @@ export const authService = {
         expiresAt: getResetTokenExpiry(),
       },
     });
-
-    // TODO: Send email with reset link
-    // For now, log the token (in production, only send via email)
-    console.log(`Password reset token for ${email}: ${token}`);
 
     return "If the email exists, a reset link has been sent.";
   },
@@ -349,6 +353,10 @@ export const authService = {
     await prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
+    });
+
+    await prisma.refreshToken.deleteMany({
+      where: { userId },
     });
   },
 

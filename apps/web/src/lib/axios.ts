@@ -24,10 +24,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ message?: string; error?: string }>) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as typeof error.config & { _retry?: boolean };
 
-    // Handle 401 - try to refresh token
-    if (error.response?.status === 401 && originalRequest) {
+    // Handle 401 - try to refresh token (only once per request to prevent infinite loops)
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
       const refreshToken = localStorage.getItem("refreshToken");
 
       if (refreshToken) {

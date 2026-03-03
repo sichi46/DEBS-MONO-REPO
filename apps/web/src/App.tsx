@@ -8,7 +8,15 @@ import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { LandingPage } from "./features/landing/LandingPage";
 
 // Auth
-import { LoginForm, RegisterForm, ProtectedRoute } from "./features/auth";
+import {
+  LoginForm,
+  RegisterForm,
+  ForgotPasswordForm,
+  ResetPasswordForm,
+  ProtectedRoute,
+  AdminRoute,
+  AuthInitializer,
+} from "./features/auth";
 
 // Dashboard Features
 import { DashboardOverview } from "./features/dashboard";
@@ -32,6 +40,9 @@ import {
 function App() {
   return (
     <div className="min-h-screen bg-background font-sans antialiased text-foreground">
+      {/* Hydrates user state from the API on page load if a token exists */}
+      <AuthInitializer />
+
       {/* Toast notifications */}
       <Toaster
         position="top-right"
@@ -62,6 +73,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
+        <Route path="/forgot-password" element={<ForgotPasswordForm />} />
+        <Route path="/reset-password" element={<ResetPasswordForm />} />
 
         {/* Protected Dashboard Routes */}
         <Route element={<ProtectedRoute />}>
@@ -76,8 +89,10 @@ function App() {
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
+        </Route>
 
-          {/* Admin Routes - RBAC will check user role */}
+        {/* Admin Routes - requires ADMIN role */}
+        <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AnalyticsDashboard />} />
             <Route path="users" element={<UsersPage />} />

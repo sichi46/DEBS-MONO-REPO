@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import jwt, { SignOptions } from "jsonwebtoken";
 import { config } from "../config/index.js";
 import { JwtPayload, TokenPair } from "../types/index.js";
@@ -35,6 +36,10 @@ export function verifyRefreshToken(token: string): JwtPayload | null {
   } catch {
     return null;
   }
+}
+
+export function hashRefreshToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 // Calculate expiry date for refresh token storage

@@ -1,25 +1,21 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { useSetRecoilState } from "recoil";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod/v3";
 import toast from "react-hot-toast";
 import { authApi } from "../api";
-import { userAtom, accessTokenAtom, refreshTokenAtom, isAuthenticatedAtom } from "../state/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
-import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
+import { resetPasswordSchema, type ResetPasswordInput } from "@/lib/validations/auth";
 
-export function RegisterForm() {
+export function ResetPasswordForm() {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const setUser = useSetRecoilState(userAtom);
-  const setAccessToken = useSetRecoilState(accessTokenAtom);
-  const setRefreshToken = useSetRecoilState(refreshTokenAtom);
-  const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
+  const token = searchParams.get("token") ?? "";
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -27,52 +23,39 @@ export function RegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterInput>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
+  } = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { token, password: "", confirmPassword: "" },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: authApi.register,
-    onSuccess: (response) => {
-      if (response.success && response.data) {
-        const { user, tokens } = response.data;
-
-        // Store tokens
-        localStorage.setItem("accessToken", tokens.accessToken);
-        localStorage.setItem("refreshToken", tokens.refreshToken);
-
-        // Update state
-        setAccessToken(tokens.accessToken);
-        setRefreshToken(tokens.refreshToken);
-        setUser(user);
-        setIsAuthenticated(true);
-
-        toast.success("Account created successfully!");
-        navigate("/dashboard");
-      }
+  const mutation = useMutation({
+    mutationFn: (data: ResetPasswordInput) => authApi.resetPassword(data.token, data.password),
+    onSuccess: () => {
+      toast.success("Password reset successfully. Please log in.");
+      navigate("/login");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Registration failed. Please try again.");
+      toast.error(error.message || "Password reset failed. The link may have expired.");
     },
   });
 
-  const onSubmit = (data: RegisterInput) => {
-    registerMutation.mutate({
-      name: data.name,
-      email: data.email,
-      password: data.password,
-    });
-  };
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <p className="text-destructive font-medium">Invalid or missing reset token.</p>
+            <Link to="/forgot-password" className="text-primary hover:underline text-sm">
+              Request a new reset link
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="bg-card border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -86,47 +69,19 @@ export function RegisterForm() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Create Your Account</CardTitle>
-            <p className="text-center text-muted-foreground">
-              Join Debs Insurance and secure your future
-            </p>
+            <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
+            <p className="text-center text-muted-foreground">Enter your new password below</p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  {...register("name")}
-                  className={errors.name ? "border-destructive" : ""}
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
-                )}
-              </div>
+            <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+              {/* Hidden token field */}
+              <input type="hidden" {...register("token")} />
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  {...register("email")}
-                  className={errors.email ? "border-destructive" : ""}
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">New Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -152,7 +107,7 @@ export function RegisterForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -166,7 +121,11 @@ export function RegisterForm() {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
                 {errors.confirmPassword && (
@@ -174,21 +133,20 @@ export function RegisterForm() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                {registerMutation.isPending ? (
+              <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                {mutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Account...
+                    Resetting...
                   </>
                 ) : (
-                  "Create Account"
+                  "Reset Password"
                 )}
               </Button>
 
               <div className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
                 <Link to="/login" className="text-primary hover:underline">
-                  Login
+                  Back to Login
                 </Link>
               </div>
             </form>

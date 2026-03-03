@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
     LayoutDashboard,
     Shield,
@@ -8,7 +9,7 @@ import {
     LogOut,
 } from "lucide-react";
 
-import { mockUser } from "@/lib/mock-data";
+import { userAtom, accessTokenAtom, refreshTokenAtom, isAuthenticatedAtom } from "@/features/auth";
 import {
     Sidebar,
     SidebarContent,
@@ -33,15 +34,36 @@ const navigationItems = [
 
 export function DashboardSidebar() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { state } = useSidebar();
     const isCollapsed = state === "collapsed";
 
-    // Use mock user for UI development
-    const displayUser = mockUser;
+    // Get real user from auth state
+    const user = useRecoilValue(userAtom);
+    const setUser = useSetRecoilState(userAtom);
+    const setAccessToken = useSetRecoilState(accessTokenAtom);
+    const setRefreshToken = useSetRecoilState(refreshTokenAtom);
+    const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
+
+    // Generate user initials from name
+    const getInitials = (name: string | undefined) => {
+        if (!name) return "U";
+        return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    };
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
+        // Clear tokens from localStorage
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+
+        // Clear auth state
+        setUser(null);
+        setAccessToken(null);
+        setRefreshToken(null);
+        setIsAuthenticated(false);
+
+        // Redirect to login
+        navigate("/login");
     };
 
     return (
@@ -101,15 +123,15 @@ export function DashboardSidebar() {
                 {/* User Info */}
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold shrink-0">
-                        {displayUser.avatarInitials || displayUser.name?.charAt(0) || "U"}
+                        {getInitials(user?.name)}
                     </div>
                     {!isCollapsed && (
                         <div className="flex flex-col min-w-0">
                             <span className="text-sm font-medium text-sidebar-foreground truncate">
-                                {displayUser.name}
+                                {user?.name || "User"}
                             </span>
                             <span className="text-xs text-muted-foreground truncate">
-                                {displayUser.email}
+                                {user?.email || ""}
                             </span>
                         </div>
                     )}

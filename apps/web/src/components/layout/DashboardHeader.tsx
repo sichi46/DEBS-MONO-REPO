@@ -1,7 +1,8 @@
 import { useLocation } from "react-router-dom";
+import { useRecoilValue } from "recoil";
 import { Bell } from "lucide-react";
 
-import { mockUser } from "@/lib/mock-data";
+import { userAtom } from "@/features/auth";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -19,8 +20,8 @@ const pageTitles: Record<string, string> = {
 export function DashboardHeader() {
     const location = useLocation();
 
-    // Use mock user for UI development
-    const displayUser = mockUser;
+    // Get real user from auth state
+    const user = useRecoilValue(userAtom);
 
     // Get page title from route
     const getPageTitle = () => {
@@ -58,7 +59,7 @@ export function DashboardHeader() {
 
                 {/* User Greeting */}
                 <span className="text-sm text-muted-foreground">
-                    Welcome, <span className="font-medium text-foreground">{displayUser.name}</span>
+                    Welcome, <span className="font-medium text-foreground">{user?.name || "User"}</span>
                 </span>
             </div>
         </header>
