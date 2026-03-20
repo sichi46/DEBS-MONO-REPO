@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { useSetRecoilState } from "recoil";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod/v3";
+import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { authApi } from "../api";
 import { userAtom, accessTokenAtom, refreshTokenAtom, isAuthenticatedAtom } from "../state/atoms";

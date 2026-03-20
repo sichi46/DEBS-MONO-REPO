@@ -3,7 +3,13 @@
     "allow": [
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm dev)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''version:'''', d.get\\(''''version''''\\)\\); print\\(''''peerDeps:'''', json.dumps\\(d.get\\(''''peerDependencies'''',{}\\), indent=2\\)\\); print\\(''''exports keys:'''', list\\(d.get\\(''''exports'''',{}\\).keys\\(\\)\\)[:10]\\)\")",
+      "Bash(node -e \"const p = require\\(''./apps/web/node_modules/@hookform/resolvers/package.json''\\); console.log\\(''version:'', p.version\\); console.log\\(''peerDeps:'', JSON.stringify\\(p.peerDependencies, null, 2\\)\\); console.log\\(''exports:'', Object.keys\\(p.exports || {}\\).slice\\(0,15\\)\\)\")",
+      "Bash(node -e \"const r = require\\(''./apps/web/node_modules/@hookform/resolvers/zod''\\); console.log\\(typeof r.zodResolver, Object.keys\\(r\\)\\)\")",
+      "Bash(node -e \"const p = require\\(''./apps/web/node_modules/zod/package.json''\\); console.log\\(''version:'', p.version\\); const exp = Object.keys\\(p.exports || {}\\); console.log\\(''has v4/core:'', exp.includes\\(''./v4/core''\\) || exp.includes\\(''v4/core''\\)\\); console.log\\(''exports with v4:'', exp.filter\\(k => k.includes\\(''v4''\\)\\)\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(node -e \"const p = require\\(''./apps/web/node_modules/react-hook-form/package.json''\\); console.log\\(''version:'', p.version\\)\")"
     ]
   }
 }
