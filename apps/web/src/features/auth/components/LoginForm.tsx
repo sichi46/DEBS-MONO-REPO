@@ -6,7 +6,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { authApi } from "../api";
-import { userAtom, accessTokenAtom, refreshTokenAtom, isAuthenticatedAtom } from "../state/atoms";
+import {
+  userAtom,
+  accessTokenAtom,
+  refreshTokenAtom,
+  isAuthenticatedAtom,
+} from "../state/atoms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,14 +65,16 @@ export function LoginForm() {
         }
       }
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Invalid email or password");
+    onError: () => {
+      // Error displayed via inline banner
     },
   });
 
   const onSubmit = (data: LoginInput) => {
     loginMutation.mutate(data);
   };
+
+  const apiError = loginMutation.error?.message;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -79,7 +86,9 @@ export function LoginForm() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Shield className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl text-primary font-semibold">Debs Insurance</span>
+              <span className="text-xl text-primary font-semibold">
+                Debs Insurance
+              </span>
             </Link>
           </div>
         </div>
@@ -96,6 +105,11 @@ export function LoginForm() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {apiError && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-sm text-destructive">{apiError}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -106,7 +120,9 @@ export function LoginForm() {
                   className={errors.email ? "border-destructive" : ""}
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
@@ -118,18 +134,26 @@ export function LoginForm() {
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     {...register("password")}
-                    className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                    className={
+                      errors.password ? "border-destructive pr-10" : "pr-10"
+                    }
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
@@ -142,7 +166,11 @@ export function LoginForm() {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loginMutation.isPending}
+              >
                 {loginMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

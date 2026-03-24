@@ -45,13 +45,18 @@ function App() {
 
       {/* Toast notifications */}
       <Toaster
-        position="top-right"
+        position="top-center"
+        containerStyle={{
+          top: 80,
+          zIndex: 9999,
+        }}
         toastOptions={{
           duration: 4000,
           style: {
             background: "hsl(var(--card))",
             color: "hsl(var(--card-foreground))",
             border: "1px solid hsl(var(--border))",
+            maxWidth: "420px",
           },
           success: {
             iconTheme: {
@@ -81,7 +86,10 @@ function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="policies" element={<PoliciesPage />} />
-            <Route path="policies/:policyNumber" element={<PolicyDetailsPage />} />
+            <Route
+              path="policies/:policyNumber"
+              element={<PolicyDetailsPage />}
+            />
             <Route path="claims" element={<ClaimsPage />} />
             <Route path="claims/:claimId" element={<ClaimDetailsPage />} />
             <Route path="browse" element={<BrowsePoliciesPage />} />

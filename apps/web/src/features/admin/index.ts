@@ -11,3 +11,20 @@ export { AdminPoliciesPage } from "./components/AdminPoliciesPage";
 export { AdminClaimsPage } from "./components/AdminClaimsPage";
 export { PaymentsOverviewPage } from "./components/PaymentsOverviewPage";
 export { AdminSettingsPage } from "./components/AdminSettingsPage";
+
+// API
+export { adminApi } from "./api";
+
+// Hooks
+export {
+  useAdminStats,
+  useMonthlyData,
+  usePolicyDistribution,
+  useAdminUsers,
+  useAdminPolicies,
+  useAdminClaims,
+  useAdminPayments,
+  useUpdateUserRole,
+  useUpdateUserStatus,
+  useUpdateClaimStatus,
+} from "./hooks/useAdmin";

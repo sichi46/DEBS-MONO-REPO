@@ -22,7 +22,9 @@ export const config = {
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 
   // CORS
-  corsOrigins: (process.env.CORS_ORIGINS || "http://localhost:5173").split(","),
+  corsOrigins: (
+    process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174"
+  ).split(","),
 
   // Email
   email: {
@@ -44,6 +46,8 @@ const requiredEnvVars = [
 export function validateConfig(): void {
   const missing = requiredEnvVars.filter((envVar) => !process.env[envVar]);
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`,
+    );
   }
 }

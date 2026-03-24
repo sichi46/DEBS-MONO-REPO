@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Loader2 } from "lucide-react";
-import { forgotPasswordSchema, type ForgotPasswordInput } from "@/lib/validations/auth";
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordInput,
+} from "@/lib/validations/auth";
 
 export function ForgotPasswordForm() {
   const {
@@ -22,12 +25,13 @@ export function ForgotPasswordForm() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: ForgotPasswordInput) => authApi.forgotPassword(data.email),
+    mutationFn: (data: ForgotPasswordInput) =>
+      authApi.forgotPassword(data.email),
     onSuccess: () => {
       toast.success("If that email is registered, a reset link has been sent.");
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Something went wrong. Please try again.");
+    onError: () => {
+      // Error displayed via inline banner
     },
   });
 
@@ -40,7 +44,9 @@ export function ForgotPasswordForm() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Shield className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl text-primary font-semibold">Debs Insurance</span>
+              <span className="text-xl text-primary font-semibold">
+                Debs Insurance
+              </span>
             </Link>
           </div>
         </div>
@@ -49,13 +55,26 @@ export function ForgotPasswordForm() {
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Forgot Password</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              Forgot Password
+            </CardTitle>
             <p className="text-center text-muted-foreground">
               Enter your email and we'll send you a reset link
             </p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+            <form
+              onSubmit={handleSubmit((data) => mutation.mutate(data))}
+              className="space-y-4"
+            >
+              {mutation.error && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-sm text-destructive">
+                    {mutation.error.message ||
+                      "Something went wrong. Please try again."}
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -66,11 +85,17 @@ export function ForgotPasswordForm() {
                   className={errors.email ? "border-destructive" : ""}
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={mutation.isPending}
+              >
                 {mutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

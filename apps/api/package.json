@@ -7,9 +7,10 @@
     "build": "prisma generate && tsc",
     "postinstall": "prisma generate",
     "start": "node dist/index.js",
-    "lint": "echo 'No lint configured'",
+    "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:run": "vitest run",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -31,7 +32,12 @@
     "nodemailer": "^6.9.15",
     "zod": "^3.23.8"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",

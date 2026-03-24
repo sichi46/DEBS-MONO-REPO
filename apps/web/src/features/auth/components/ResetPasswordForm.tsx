@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react";
-import { resetPasswordSchema, type ResetPasswordInput } from "@/lib/validations/auth";
+import {
+  resetPasswordSchema,
+  type ResetPasswordInput,
+} from "@/lib/validations/auth";
 
 export function ResetPasswordForm() {
   const [searchParams] = useSearchParams();
@@ -29,13 +32,14 @@ export function ResetPasswordForm() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: ResetPasswordInput) => authApi.resetPassword(data.token, data.password),
+    mutationFn: (data: ResetPasswordInput) =>
+      authApi.resetPassword(data.token, data.password),
     onSuccess: () => {
       toast.success("Password reset successfully. Please log in.");
       navigate("/login");
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Password reset failed. The link may have expired.");
+    onError: () => {
+      // Error displayed via inline banner
     },
   });
 
@@ -44,8 +48,13 @@ export function ResetPasswordForm() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center space-y-4">
-            <p className="text-destructive font-medium">Invalid or missing reset token.</p>
-            <Link to="/forgot-password" className="text-primary hover:underline text-sm">
+            <p className="text-destructive font-medium">
+              Invalid or missing reset token.
+            </p>
+            <Link
+              to="/forgot-password"
+              className="text-primary hover:underline text-sm"
+            >
               Request a new reset link
             </Link>
           </CardContent>
@@ -63,7 +72,9 @@ export function ResetPasswordForm() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Shield className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl text-primary font-semibold">Debs Insurance</span>
+              <span className="text-xl text-primary font-semibold">
+                Debs Insurance
+              </span>
             </Link>
           </div>
         </div>
@@ -72,13 +83,29 @@ export function ResetPasswordForm() {
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
-            <p className="text-center text-muted-foreground">Enter your new password below</p>
+            <CardTitle className="text-2xl text-center">
+              Reset Password
+            </CardTitle>
+            <p className="text-center text-muted-foreground">
+              Enter your new password below
+            </p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+            <form
+              onSubmit={handleSubmit((data) => mutation.mutate(data))}
+              className="space-y-4"
+            >
               {/* Hidden token field */}
               <input type="hidden" {...register("token")} />
+
+              {mutation.error && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-sm text-destructive">
+                    {mutation.error.message ||
+                      "Password reset failed. The link may have expired."}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="password">New Password</Label>
@@ -88,18 +115,26 @@ export function ResetPasswordForm() {
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     {...register("password")}
-                    className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                    className={
+                      errors.password ? "border-destructive pr-10" : "pr-10"
+                    }
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   Must be 8+ characters with uppercase, lowercase, and number
@@ -114,7 +149,11 @@ export function ResetPasswordForm() {
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="••••••••"
                     {...register("confirmPassword")}
-                    className={errors.confirmPassword ? "border-destructive pr-10" : "pr-10"}
+                    className={
+                      errors.confirmPassword
+                        ? "border-destructive pr-10"
+                        : "pr-10"
+                    }
                   />
                   <button
                     type="button"
@@ -129,11 +168,17 @@ export function ResetPasswordForm() {
                   </button>
                 </div>
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.confirmPassword.message}
+                  </p>
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={mutation.isPending}
+              >
                 {mutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
