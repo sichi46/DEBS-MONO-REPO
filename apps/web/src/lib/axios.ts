@@ -1,7 +1,8 @@
 import axios, { AxiosError } from "axios";
 
 // API base URL - use environment variable or default to local development
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -24,10 +25,21 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ message?: string; error?: string }>) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as typeof error.config & {
+      _retry?: boolean;
+    };
 
-    // Handle 401 - try to refresh token
-    if (error.response?.status === 401 && originalRequest) {
+    // Skip token refresh for auth endpoints — let the error propagate to the caller
+    const isAuthEndpoint = originalRequest?.url?.startsWith("/auth/");
+
+    // Handle 401 - try to refresh token (only once per request to prevent infinite loops)
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
+      originalRequest._retry = true;
       const refreshToken = localStorage.getItem("refreshToken");
 
       if (refreshToken) {
@@ -36,7 +48,8 @@ api.interceptors.response.use(
             refreshToken,
           });
 
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
+          const { accessToken, refreshToken: newRefreshToken } =
+            response.data.data.tokens;
 
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", newRefreshToken);
@@ -65,7 +78,7 @@ api.interceptors.response.use(
       "An unexpected error occurred";
 
     return Promise.reject(new Error(message));
-  }
+  },
 );
 
 export { api };

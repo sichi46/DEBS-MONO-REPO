@@ -8,7 +8,15 @@ import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { LandingPage } from "./features/landing/LandingPage";
 
 // Auth
-import { LoginForm, RegisterForm, ProtectedRoute } from "./features/auth";
+import {
+  LoginForm,
+  RegisterForm,
+  ForgotPasswordForm,
+  ResetPasswordForm,
+  ProtectedRoute,
+  AdminRoute,
+  AuthInitializer,
+} from "./features/auth";
 
 // Dashboard Features
 import { DashboardOverview } from "./features/dashboard";
@@ -32,19 +40,34 @@ import {
 function App() {
   return (
     <div className="min-h-screen bg-background font-sans antialiased text-foreground">
+      {/* Hydrates user state from the API on page load if a token exists */}
+      <AuthInitializer />
+
       {/* Toast notifications */}
       <Toaster
-        position="top-right"
+        position="top-center"
+        containerStyle={{
+          top: 20,
+          zIndex: 99999,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: "420px",
+        }}
         toastOptions={{
           duration: 4000,
           style: {
             background: "hsl(var(--card))",
             color: "hsl(var(--card-foreground))",
             border: "1px solid hsl(var(--border))",
+            maxWidth: "420px",
+            width: "calc(100% - 2rem)",
+            margin: "0 auto",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           },
           success: {
             iconTheme: {
-              primary: "hsl(var(--success))",
+              primary: "hsl(var(--success, 142 76% 36%))",
               secondary: "white",
             },
           },
@@ -62,13 +85,18 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
+        <Route path="/forgot-password" element={<ForgotPasswordForm />} />
+        <Route path="/reset-password" element={<ResetPasswordForm />} />
 
         {/* Protected Dashboard Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="policies" element={<PoliciesPage />} />
-            <Route path="policies/:policyNumber" element={<PolicyDetailsPage />} />
+            <Route
+              path="policies/:policyNumber"
+              element={<PolicyDetailsPage />}
+            />
             <Route path="claims" element={<ClaimsPage />} />
             <Route path="claims/:claimId" element={<ClaimDetailsPage />} />
             <Route path="browse" element={<BrowsePoliciesPage />} />
@@ -76,8 +104,10 @@ function App() {
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
+        </Route>
 
-          {/* Admin Routes - RBAC will check user role */}
+        {/* Admin Routes - requires ADMIN role */}
+        <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AnalyticsDashboard />} />
             <Route path="users" element={<UsersPage />} />

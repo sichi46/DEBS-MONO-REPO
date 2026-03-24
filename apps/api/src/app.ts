@@ -4,6 +4,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { config, validateConfig } from "./config/index.js";
 import authRoutes from "./routes/auth.routes.js";
+import policiesRoutes from "./routes/policies.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 import { sendError } from "./utils/response.js";
 
 // Validate required environment variables at startup
@@ -24,17 +26,17 @@ app.use(helmet());
 
 // CORS configuration
 app.use(
-    cors({
-        origin: config.corsOrigins,
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-    })
+  cors({
+    origin: config.corsOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
 );
 
 // Request logging
 if (config.nodeEnv !== "test") {
-    app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
+  app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
 }
 
 // Body parsing
@@ -46,11 +48,11 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // =============================================================================
 
 app.get("/health", (_req, res) => {
-    res.json({
-        status: "ok",
-        timestamp: new Date().toISOString(),
-        environment: config.nodeEnv,
-    });
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: config.nodeEnv,
+  });
 });
 
 // =============================================================================
@@ -58,13 +60,15 @@ app.get("/health", (_req, res) => {
 // =============================================================================
 
 app.use("/api/auth", authRoutes);
+app.use("/api/policies", policiesRoutes);
+app.use("/api/admin", adminRoutes);
 
 // =============================================================================
 // 404 Handler
 // =============================================================================
 
 app.use((_req, res) => {
-    sendError(res, "Route not found", 404);
+  sendError(res, "Route not found", 404);
 });
 
 // =============================================================================
@@ -72,22 +76,22 @@ app.use((_req, res) => {
 // =============================================================================
 
 app.use(
-    (
-        err: Error,
-        _req: express.Request,
-        res: express.Response,
-        _next: express.NextFunction
-    ) => {
-        console.error("Unhandled error:", err);
+  (
+    err: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    console.error("Unhandled error:", err);
 
-        const statusCode = 500;
-        const message =
-            config.nodeEnv === "production"
-                ? "Internal server error"
-                : err.message || "Internal server error";
+    const statusCode = 500;
+    const message =
+      config.nodeEnv === "production"
+        ? "Internal server error"
+        : err.message || "Internal server error";
 
-        sendError(res, message, statusCode);
-    }
+    sendError(res, message, statusCode);
+  },
 );
 
 export default app;

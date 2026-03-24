@@ -1,12 +1,13 @@
 import { useState } from "react";
 import {
-    CreditCard,
-    Search,
-    Download,
-    DollarSign,
-    TrendingUp,
-    Clock,
-    CheckCircle,
+  CreditCard,
+  Search,
+  Download,
+  DollarSign,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,223 +15,246 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { mockAllPayments, mockAdminAnalytics, type PaymentStatus } from "@/lib/mock-data";
+import { useAdminPayments, useAdminStats } from "../hooks/useAdmin";
 
-function getStatusVariant(status: PaymentStatus): "default" | "secondary" | "destructive" {
-    switch (status) {
-        case "Paid":
-            return "default";
-        case "Pending":
-            return "secondary";
-        case "Failed":
-            return "destructive";
-        default:
-            return "secondary";
-    }
+type PaymentStatus = "Paid" | "Pending" | "Failed";
+
+function getStatusVariant(
+  status: PaymentStatus,
+): "default" | "secondary" | "destructive" {
+  switch (status) {
+    case "Paid":
+      return "default";
+    case "Pending":
+      return "secondary";
+    case "Failed":
+      return "destructive";
+    default:
+      return "secondary";
+  }
 }
 
 export function PaymentsOverviewPage() {
-    const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-    // Filter payments
-    const filteredPayments = mockAllPayments.filter((payment) => {
-        const matchesSearch =
-            payment.policyNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            payment.userName.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+  const { data, isLoading } = useAdminPayments({
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    search: searchQuery || undefined,
+  });
+  const { data: stats } = useAdminStats();
 
-    const stats = mockAdminAnalytics;
+  const payments = data?.payments || [];
+  const total = data?.pagination?.total ?? 0;
+  const paidCount = payments.filter((p: any) => p.status === "Paid").length;
+  const pendingCount = payments.filter(
+    (p: any) => p.status === "Pending",
+  ).length;
 
-    // Calculate totals from mock data
-    const paidPayments = mockAllPayments.filter((p) => p.status === "Paid");
-    const pendingPayments = mockAllPayments.filter((p) => p.status === "Pending");
-
-    return (
-        <div className="space-y-6" data-testid="payments-overview-page">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                        Payments Overview
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Track and manage all premium payments
-                    </p>
-                </div>
-                <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export Report
-                </Button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                <DollarSign className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                                <p className="text-2xl font-bold">{stats.totalRevenue}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
-                                <TrendingUp className="h-6 w-6 text-success" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">This Month</p>
-                                <p className="text-2xl font-bold text-success">{stats.monthlyRevenue}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
-                                <CheckCircle className="h-6 w-6 text-success" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Paid</p>
-                                <p className="text-2xl font-bold text-success">{paidPayments.length}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/10">
-                                <Clock className="h-6 w-6 text-warning" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Pending</p>
-                                <p className="text-2xl font-bold text-warning">{pendingPayments.length}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Payments Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-primary" />
-                        Payment History
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {/* Search and Filters */}
-                    <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="search"
-                                placeholder="Search by policy number or customer..."
-                                className="pl-8"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-full sm:w-[150px]">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="Paid">Paid</SelectItem>
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="Failed">Failed</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Table */}
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead className="hidden md:table-cell">Customer</TableHead>
-                                    <TableHead className="hidden sm:table-cell">Policy</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead className="hidden lg:table-cell">Method</TableHead>
-                                    <TableHead>Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredPayments.length > 0 ? (
-                                    filteredPayments.map((payment) => (
-                                        <TableRow key={payment.id}>
-                                            <TableCell>{payment.date}</TableCell>
-                                            <TableCell className="hidden md:table-cell">
-                                                {payment.userName}
-                                            </TableCell>
-                                            <TableCell className="hidden sm:table-cell">
-                                                <div>
-                                                    <p>{payment.policyType}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {payment.policyNumber}
-                                                    </p>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                {payment.amount}
-                                            </TableCell>
-                                            <TableCell className="hidden lg:table-cell">
-                                                {payment.method}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={getStatusVariant(payment.status)}>
-                                                    {payment.status}
-                                                </Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <CreditCard className="h-8 w-8 text-muted-foreground/50" />
-                                                <p className="text-muted-foreground">No payments found</p>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    <p className="mt-4 text-sm text-muted-foreground">
-                        Showing {filteredPayments.length} of {mockAllPayments.length} payments
-                    </p>
-                </CardContent>
-            </Card>
+  return (
+    <div className="space-y-6" data-testid="payments-overview-page">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            Payments Overview
+          </h1>
+          <p className="text-muted-foreground">
+            Track and manage all premium payments
+          </p>
         </div>
-    );
+        <Button variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Export Report
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <DollarSign className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold">
+                  {stats?.totalRevenue ?? "ZMW 0"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
+                <TrendingUp className="h-6 w-6 text-success" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">This Month</p>
+                <p className="text-2xl font-bold text-success">
+                  {stats?.monthlyRevenue ?? "ZMW 0"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
+                <CheckCircle className="h-6 w-6 text-success" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Paid</p>
+                <p className="text-2xl font-bold text-success">{paidCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/10">
+                <Clock className="h-6 w-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold text-warning">
+                  {pendingCount}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Payments Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            Payment History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Search and Filters */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by policy number or customer..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Paid">Paid</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="hidden md:table-cell">
+                        Customer
+                      </TableHead>
+                      <TableHead className="hidden sm:table-cell">
+                        Policy
+                      </TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead className="hidden lg:table-cell">
+                        Method
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.length > 0 ? (
+                      payments.map((payment: any) => (
+                        <TableRow key={payment.id}>
+                          <TableCell>{payment.date}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {payment.userName}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div>
+                              <p>{payment.policyType}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {payment.policyNumber}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {payment.amount}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {payment.method}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusVariant(payment.status)}>
+                              {payment.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <CreditCard className="h-8 w-8 text-muted-foreground/50" />
+                            <p className="text-muted-foreground">
+                              No payments found
+                            </p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <p className="mt-4 text-sm text-muted-foreground">
+                Showing {payments.length} of {total} payments
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

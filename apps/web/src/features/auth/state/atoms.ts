@@ -1,5 +1,5 @@
 import { atom } from "recoil";
-import { AuthState, User } from "../types";
+import { User } from "../types";
 
 // Check if user is authenticated on load
 const getInitialAuthState = (): boolean => {
@@ -29,17 +29,6 @@ export const isAuthenticatedAtom = atom<boolean>({
 export const isLoadingAtom = atom<boolean>({
   key: "auth/isLoading",
   default: false,
-});
-
-export const authStateAtom = atom<AuthState>({
-  key: "auth/state",
-  default: {
-    user: null,
-    accessToken: localStorage.getItem("accessToken"),
-    refreshToken: localStorage.getItem("refreshToken"),
-    isAuthenticated: getInitialAuthState(),
-    isLoading: false,
-  },
 });
 
 // Legacy export for backward compatibility
