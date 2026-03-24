@@ -1,6 +1,7 @@
 {
   "private": true,
   "scripts": {
+    "ggg": "hgjhgh",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
