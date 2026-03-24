@@ -4,6 +4,9 @@ import axios, { AxiosError } from "axios";
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
+console.log("[API Config] VITE_API_URL:", import.meta.env.VITE_API_URL);
+console.log("[API Config] Using base URL:", API_BASE_URL);
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -14,6 +17,9 @@ const api = axios.create({
 
 // Request interceptor for auth token
 api.interceptors.request.use((config) => {
+  console.log(
+    `[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+  );
   const token = localStorage.getItem("accessToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
