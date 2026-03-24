@@ -47,8 +47,12 @@ function App() {
       <Toaster
         position="top-center"
         containerStyle={{
-          top: 80,
-          zIndex: 9999,
+          top: 20,
+          zIndex: 99999,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: "420px",
         }}
         toastOptions={{
           duration: 4000,
@@ -57,10 +61,13 @@ function App() {
             color: "hsl(var(--card-foreground))",
             border: "1px solid hsl(var(--border))",
             maxWidth: "420px",
+            width: "calc(100% - 2rem)",
+            margin: "0 auto",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           },
           success: {
             iconTheme: {
-              primary: "hsl(var(--success))",
+              primary: "hsl(var(--success, 142 76% 36%))",
               secondary: "white",
             },
           },

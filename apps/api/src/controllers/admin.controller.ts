@@ -4,14 +4,22 @@ import { adminService } from "../services/admin.service.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export const adminController = {
   async getDashboardStats(_req: AuthenticatedRequest, res: Response) {
     try {
       const stats = await adminService.getDashboardStats();
       sendSuccess(res, stats);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get dashboard stats error:", error);
-      sendError(res, error.message || "Failed to fetch dashboard stats", 500);
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to fetch dashboard stats"),
+        500,
+      );
     }
   },
 
@@ -22,9 +30,13 @@ export const adminController = {
         : undefined;
       const data = await adminService.getMonthlyData(year);
       sendSuccess(res, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get monthly data error:", error);
-      sendError(res, error.message || "Failed to fetch monthly data", 500);
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to fetch monthly data"),
+        500,
+      );
     }
   },
 
@@ -32,11 +44,11 @@ export const adminController = {
     try {
       const data = await adminService.getPolicyDistribution();
       sendSuccess(res, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get policy distribution error:", error);
       sendError(
         res,
-        error.message || "Failed to fetch policy distribution",
+        getErrorMessage(error, "Failed to fetch policy distribution"),
         500,
       );
     }
@@ -53,9 +65,9 @@ export const adminController = {
         status: status as string,
       });
       sendSuccess(res, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get users error:", error);
-      sendError(res, error.message || "Failed to fetch users", 500);
+      sendError(res, getErrorMessage(error, "Failed to fetch users"), 500);
     }
   },
 
@@ -65,19 +77,20 @@ export const adminController = {
         role: z.enum(["ADMIN", "AGENT", "USER"]),
       });
       const { role } = schema.parse(req.body);
+      const userId = req.params.id as string;
       const user = await adminService.updateUserRole(
-        req.params.id,
+        userId,
         role,
         req.user!.userId,
       );
       sendSuccess(res, user, "User role updated");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update user role error:", error);
       if (error instanceof z.ZodError) {
         sendError(res, "Invalid role value", 400);
         return;
       }
-      sendError(res, error.message || "Failed to update user role", 400);
+      sendError(res, getErrorMessage(error, "Failed to update user role"), 400);
     }
   },
 
@@ -87,19 +100,24 @@ export const adminController = {
         status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]),
       });
       const { status } = schema.parse(req.body);
+      const userId = req.params.id as string;
       const user = await adminService.updateUserStatus(
-        req.params.id,
+        userId,
         status,
         req.user!.userId,
       );
       sendSuccess(res, user, "User status updated");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update user status error:", error);
       if (error instanceof z.ZodError) {
         sendError(res, "Invalid status value", 400);
         return;
       }
-      sendError(res, error.message || "Failed to update user status", 400);
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to update user status"),
+        400,
+      );
     }
   },
 
@@ -113,9 +131,9 @@ export const adminController = {
         search: search as string,
       });
       sendSuccess(res, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get admin policies error:", error);
-      sendError(res, error.message || "Failed to fetch policies", 500);
+      sendError(res, getErrorMessage(error, "Failed to fetch policies"), 500);
     }
   },
 
@@ -129,9 +147,9 @@ export const adminController = {
         search: search as string,
       });
       sendSuccess(res, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get admin claims error:", error);
-      sendError(res, error.message || "Failed to fetch claims", 500);
+      sendError(res, getErrorMessage(error, "Failed to fetch claims"), 500);
     }
   },
 
@@ -141,19 +159,24 @@ export const adminController = {
         status: z.enum(["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"]),
       });
       const { status } = schema.parse(req.body);
+      const claimId = req.params.id as string;
       const claim = await adminService.updateClaimStatus(
-        req.params.id,
+        claimId,
         status,
         req.user!.userId,
       );
       sendSuccess(res, claim, "Claim status updated");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update claim status error:", error);
       if (error instanceof z.ZodError) {
         sendError(res, "Invalid claim status value", 400);
         return;
       }
-      sendError(res, error.message || "Failed to update claim status", 400);
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to update claim status"),
+        400,
+      );
     }
   },
 
@@ -167,9 +190,9 @@ export const adminController = {
         search: search as string,
       });
       sendSuccess(res, data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get admin payments error:", error);
-      sendError(res, error.message || "Failed to fetch payments", 500);
+      sendError(res, getErrorMessage(error, "Failed to fetch payments"), 500);
     }
   },
 };

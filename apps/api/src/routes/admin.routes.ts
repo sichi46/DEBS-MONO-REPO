@@ -2,7 +2,7 @@ import { Router } from "express";
 import { adminController } from "../controllers/admin.controller.js";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 
-const router = Router();
+const router: Router = Router();
 
 // All admin routes require authentication + admin role
 router.use(authenticate, requireAdmin);
