@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import {
   LayoutDashboard,
@@ -31,6 +32,16 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const navigationItems = [
   { name: "Analytics", path: "/admin", icon: LayoutDashboard },
@@ -43,8 +54,10 @@ const navigationItems = [
 
 export function AdminSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const user = useRecoilValue(userAtom);
   const resetUser = useResetRecoilState(userAtom);
@@ -68,7 +81,7 @@ export function AdminSidebar() {
     resetAccessToken();
     resetRefreshToken();
     resetIsAuthenticated();
-    window.location.href = "/login";
+    navigate("/login");
   };
 
   return (
@@ -147,7 +160,7 @@ export function AdminSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={handleLogout}
+              onClick={() => setShowLogoutDialog(true)}
               tooltip="Logout"
               className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
@@ -157,6 +170,29 @@ export function AdminSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Are you sure you want to logout?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be redirected to the login page and will need to sign in
+              again to access the admin portal.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   );
 }
