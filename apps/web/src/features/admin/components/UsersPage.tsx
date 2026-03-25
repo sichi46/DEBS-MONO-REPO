@@ -3,7 +3,6 @@ import {
   Users,
   Search,
   MoreHorizontal,
-  UserPlus,
   Mail,
   Phone,
   Eye,
@@ -108,19 +107,10 @@ export function UsersPage() {
   return (
     <div className="space-y-6" data-testid="users-page">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            User Management
-          </h1>
-          <p className="text-muted-foreground">
-            Manage users, roles, and permissions
-          </p>
-        </div>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+      <div>
+        <p className="text-muted-foreground">
+          Manage users, roles, and permissions
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -141,12 +131,12 @@ export function UsersPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle className="h-6 w-6 text-success" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold text-success">{activeUsers}</p>
+                <p className="text-2xl font-bold">{activeUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -154,8 +144,8 @@ export function UsersPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary/10">
-                <Users className="h-6 w-6 text-secondary-foreground" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Users className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Customers</p>
@@ -167,8 +157,8 @@ export function UsersPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/10">
-                <Users className="h-6 w-6 text-warning" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Users className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Admin & Agents</p>
@@ -303,15 +293,35 @@ export function UsersPage() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    toast(`Loading ${user.name}'s details...`, {
+                                      icon: "👤",
+                                    })
+                                  }
+                                >
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    window.open(
+                                      `mailto:${user.email}`,
+                                      "_blank",
+                                    );
+                                  }}
+                                >
                                   <Mail className="mr-2 h-4 w-4" />
                                   Send Email
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    window.open(
+                                      `tel:${user.phone || ""}`,
+                                      "_blank",
+                                    );
+                                  }}
+                                >
                                   <Phone className="mr-2 h-4 w-4" />
                                   Call User
                                 </DropdownMenuItem>

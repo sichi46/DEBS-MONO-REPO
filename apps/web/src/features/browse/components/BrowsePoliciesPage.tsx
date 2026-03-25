@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import toast from "react-hot-toast";
 import {
   ArrowRight,
   Car,
@@ -57,9 +58,6 @@ export function BrowsePoliciesPage() {
     <div className="space-y-6" data-testid="browse-policies-page">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          Browse Policies
-        </h1>
         <p className="text-muted-foreground">
           Explore our range of insurance products to protect what matters most
         </p>
@@ -125,7 +123,15 @@ export function BrowsePoliciesPage() {
               coverage.
             </p>
           </div>
-          <Button className="mt-4 md:mt-0">Contact an Advisor</Button>
+          <Button
+            className="mt-4 md:mt-0"
+            onClick={() => {
+              window.location.href = "tel:+260211123456";
+              toast.success("Connecting you to an advisor...");
+            }}
+          >
+            Contact an Advisor
+          </Button>
         </CardContent>
       </Card>
     </div>

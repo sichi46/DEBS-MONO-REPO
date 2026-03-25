@@ -107,7 +107,14 @@ export function LoginForm() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {apiError && (
                 <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
-                  <p className="text-sm text-destructive">{apiError}</p>
+                  <p className="text-sm font-medium text-destructive">
+                    Login failed
+                  </p>
+                  <p className="text-sm text-destructive mt-1">
+                    {apiError === "Invalid email or password"
+                      ? "The email or password you entered is incorrect. Please check your credentials and try again."
+                      : apiError}
+                  </p>
                 </div>
               )}
               <div className="space-y-2">

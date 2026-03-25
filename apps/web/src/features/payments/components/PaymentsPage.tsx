@@ -74,7 +74,11 @@ export function PaymentsPage() {
       p.status,
       p.method,
     ]);
-    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(","),
+      )
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -98,14 +102,11 @@ export function PaymentsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Payments
-          </h1>
           <p className="text-muted-foreground">
             View your payment history and manage upcoming payments
           </p>
         </div>
-        <Button>
+        <Button className="pr-5">
           <CreditCard className="mr-2 h-4 w-4" />
           Make a Payment
         </Button>
@@ -160,13 +161,14 @@ export function PaymentsPage() {
             Payment History
           </CardTitle>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="pr-4">
               <Filter className="mr-2 h-4 w-4" />
               Filter
             </Button>
             <Button
               variant="outline"
               size="sm"
+              className="pr-4"
               onClick={handleExport}
               disabled={!payments?.length}
             >

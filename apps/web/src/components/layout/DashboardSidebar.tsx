@@ -9,7 +9,6 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-
 import {
   userAtom,
   accessTokenAtom,
@@ -26,6 +25,7 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -90,24 +90,18 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      {/* Header with Logo */}
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
-          {!isCollapsed && (
-            <span className="text-xl font-bold text-primary">
-              Debs Insurance
-            </span>
-          )}
-        </div>
+      {/* Header — h-14 matches top bar height for alignment */}
+      <SidebarHeader className="h-14 px-4 flex flex-row items-center gap-3 border-b border-sidebar-border">
+        <SidebarTrigger className="shrink-0" />
+        {!isCollapsed && (
+          <span className="text-xl font-bold text-primary truncate">
+            Debs Insurance
+          </span>
+        )}
       </SidebarHeader>
 
-      <Separator className="mx-4" />
-
       {/* Navigation Menu */}
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="py-4 overflow-hidden">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -139,8 +133,10 @@ export function DashboardSidebar() {
       </SidebarContent>
 
       {/* Footer with User Info and Logout */}
-      <SidebarFooter className="p-4">
-        <Separator className="mb-4" />
+      <SidebarFooter
+        className={`overflow-hidden ${isCollapsed ? "p-2" : "p-4"}`}
+      >
+        {!isCollapsed && <Separator className="mb-4" />}
 
         {/* User Info */}
         <div className="flex items-center gap-3 mb-4">

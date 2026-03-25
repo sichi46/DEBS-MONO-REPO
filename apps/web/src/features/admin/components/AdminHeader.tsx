@@ -1,14 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { useRecoilValue } from "recoil";
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { userAtom } from "@/features/auth";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 
-// Map routes to page titles
 const pageTitles: Record<string, string> = {
   "/admin": "Analytics Dashboard",
   "/admin/users": "User Management",
@@ -22,39 +18,24 @@ export function AdminHeader() {
   const location = useLocation();
   const user = useRecoilValue(userAtom);
 
-  // Get page title from route
   const getPageTitle = () => {
-    if (pageTitles[location.pathname]) {
-      return pageTitles[location.pathname];
-    }
-    if (location.pathname.startsWith("/admin/users/")) {
-      return "User Details";
-    }
-    if (location.pathname.startsWith("/admin/policies/")) {
+    if (pageTitles[location.pathname]) return pageTitles[location.pathname];
+    if (location.pathname.startsWith("/admin/users/")) return "User Details";
+    if (location.pathname.startsWith("/admin/policies/"))
       return "Policy Details";
-    }
-    if (location.pathname.startsWith("/admin/claims/")) {
-      return "Claim Details";
-    }
+    if (location.pathname.startsWith("/admin/claims/")) return "Claim Details";
     return "Admin Dashboard";
   };
 
   return (
     <header className="hidden lg:flex h-14 items-center justify-between border-b border-border bg-card px-6">
-      <div className="flex items-center gap-3">
-        {/* Sidebar Toggle */}
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-5" />
-
-        {/* Page Title */}
-        <h1 className="text-lg font-semibold text-foreground">
-          {getPageTitle()}
-        </h1>
-      </div>
+      <h1 className="text-lg font-semibold text-foreground">
+        {getPageTitle()}
+      </h1>
 
       <div className="flex items-center gap-4">
         {/* Search */}
-        <div className="relative hidden md:block">
+        <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -63,18 +44,9 @@ export function AdminHeader() {
           />
         </div>
 
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-
-        {/* User Greeting */}
-        <span className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">
-            {user?.name || "Admin"}
-          </span>
+        {/* User */}
+        <span className="text-sm font-medium text-foreground">
+          {user?.name || "Admin"}
         </span>
       </div>
     </header>

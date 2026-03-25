@@ -65,19 +65,57 @@ export function PaymentsOverviewPage() {
     (p: any) => p.status === "Pending",
   ).length;
 
+  const handleExport = () => {
+    if (!payments.length) return;
+    const headers = [
+      "Date",
+      "Customer",
+      "Policy",
+      "Type",
+      "Amount",
+      "Status",
+      "Method",
+    ];
+    const rows = payments.map((p: any) => [
+      p.date,
+      p.userName,
+      p.policyNumber,
+      p.policyType,
+      p.amount,
+      p.status,
+      p.method,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((val: string) => `"${String(val).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payments-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6" data-testid="payments-overview-page">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Payments Overview
-          </h1>
           <p className="text-muted-foreground">
             Track and manage all premium payments
           </p>
         </div>
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          className="pr-5"
+          onClick={handleExport}
+          disabled={!payments.length}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export Report
         </Button>
@@ -103,12 +141,12 @@ export function PaymentsOverviewPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
-                <TrendingUp className="h-6 w-6 text-success" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <TrendingUp className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">This Month</p>
-                <p className="text-2xl font-bold text-success">
+                <p className="text-2xl font-bold">
                   {stats?.monthlyRevenue ?? "ZMW 0"}
                 </p>
               </div>
@@ -118,12 +156,12 @@ export function PaymentsOverviewPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle className="h-6 w-6 text-success" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Paid</p>
-                <p className="text-2xl font-bold text-success">{paidCount}</p>
+                <p className="text-2xl font-bold">{paidCount}</p>
               </div>
             </div>
           </CardContent>
@@ -131,14 +169,12 @@ export function PaymentsOverviewPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/10">
-                <Clock className="h-6 w-6 text-warning" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Clock className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-warning">
-                  {pendingCount}
-                </p>
+                <p className="text-2xl font-bold">{pendingCount}</p>
               </div>
             </div>
           </CardContent>

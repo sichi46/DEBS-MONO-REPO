@@ -66,14 +66,11 @@ export function PoliciesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            My Policies
-          </h1>
           <p className="text-muted-foreground">
             View and manage your insurance policies
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="pr-5">
           <Link to="/dashboard/browse">
             <Plus className="mr-2 h-4 w-4" />
             Get New Policy

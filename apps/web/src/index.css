@@ -33,9 +33,10 @@
   --color-warning-foreground: #1A202C;
 
   --color-border: #CBD5E0;
-  --color-input: #ffffff;
+  --color-input: #CBD5E0;
   --color-input-background: #ffffff;
   --color-ring: #0057B7;
+  --color-switch-background: #CBD5E0;
 
   /* Sidebar */
   --color-sidebar: #ffffff;
@@ -93,9 +94,10 @@
   --color-warning-foreground: #1A202C;
 
   --color-border: #1e293b;
-  --color-input: #1e293b;
+  --color-input: #334155;
   --color-input-background: #1e293b;
   --color-ring: #3b82f6;
+  --color-switch-background: #334155;
 
   /* Sidebar - Dark */
   --color-sidebar: #1e293b;

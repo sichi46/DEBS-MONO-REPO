@@ -105,9 +105,6 @@ export function AnalyticsDashboard() {
     <div className="space-y-6" data-testid="analytics-dashboard">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          Analytics Dashboard
-        </h1>
         <p className="text-muted-foreground">
           Overview of your insurance business performance
         </p>
@@ -189,12 +186,12 @@ export function AnalyticsDashboard() {
                       >
                         <stop
                           offset="5%"
-                          stopColor="#F59E0B"
+                          stopColor="#64748B"
                           stopOpacity={0.3}
                         />
                         <stop
                           offset="95%"
-                          stopColor="#F59E0B"
+                          stopColor="#64748B"
                           stopOpacity={0}
                         />
                       </linearGradient>
@@ -214,8 +211,8 @@ export function AnalyticsDashboard() {
                         "",
                       ]}
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #CBD5E0",
                         borderRadius: "8px",
                       }}
                     />
@@ -230,7 +227,7 @@ export function AnalyticsDashboard() {
                     <Area
                       type="monotone"
                       dataKey="payouts"
-                      stroke="#F59E0B"
+                      stroke="#64748B"
                       fillOpacity={1}
                       fill="url(#colorPayouts)"
                       name="Payouts"
@@ -323,7 +320,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-success" />
+              <FileText className="h-5 w-5 text-primary" />
               New Policies
             </CardTitle>
             <CardDescription>Monthly new policy registrations</CardDescription>
@@ -345,14 +342,14 @@ export function AnalyticsDashboard() {
                     <YAxis className="text-xs" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #CBD5E0",
                         borderRadius: "8px",
                       }}
                     />
                     <Bar
                       dataKey="newPolicies"
-                      fill="#22C55E"
+                      fill="#0057B7"
                       radius={[4, 4, 0, 0]}
                       name="New Policies"
                     />
@@ -366,7 +363,7 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-warning" />
+              <ClipboardList className="h-5 w-5 text-primary" />
               Claims Filed
             </CardTitle>
             <CardDescription>Monthly claims submitted</CardDescription>
@@ -388,14 +385,14 @@ export function AnalyticsDashboard() {
                     <YAxis className="text-xs" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #CBD5E0",
                         borderRadius: "8px",
                       }}
                     />
                     <Bar
                       dataKey="claims"
-                      fill="#F59E0B"
+                      fill="#64748B"
                       radius={[4, 4, 0, 0]}
                       name="Claims"
                     />
@@ -415,7 +412,7 @@ export function AnalyticsDashboard() {
               <p className="text-sm text-muted-foreground">
                 Total Revenue (YTD)
               </p>
-              <p className="text-2xl font-bold text-primary">
+              <p className="text-2xl font-bold">
                 {stats?.totalRevenue ?? "ZMW 0"}
               </p>
             </div>
@@ -427,7 +424,7 @@ export function AnalyticsDashboard() {
               <p className="text-sm text-muted-foreground">
                 Total Payouts (YTD)
               </p>
-              <p className="text-2xl font-bold text-warning">
+              <p className="text-2xl font-bold">
                 {stats?.totalPayouts ?? "ZMW 0"}
               </p>
             </div>
@@ -437,9 +434,7 @@ export function AnalyticsDashboard() {
           <CardContent className="p-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Approved Claims</p>
-              <p className="text-2xl font-bold text-success">
-                {stats?.approvedClaims ?? 0}
-              </p>
+              <p className="text-2xl font-bold">{stats?.approvedClaims ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -447,9 +442,7 @@ export function AnalyticsDashboard() {
           <CardContent className="p-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Rejected Claims</p>
-              <p className="text-2xl font-bold text-destructive">
-                {stats?.rejectedClaims ?? 0}
-              </p>
+              <p className="text-2xl font-bold">{stats?.rejectedClaims ?? 0}</p>
             </div>
           </CardContent>
         </Card>
