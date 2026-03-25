@@ -78,6 +78,42 @@ export function AdminClaimsPage() {
   const claims = data?.claims || [];
   const total = data?.pagination?.total ?? 0;
 
+  const handleExport = () => {
+    if (!claims.length) return;
+    const headers = [
+      "Claim ID",
+      "Customer",
+      "Email",
+      "Policy",
+      "Type",
+      "Amount",
+      "Status",
+    ];
+    const rows = claims.map((c: any) => [
+      c.claimId,
+      c.userName,
+      c.userEmail,
+      c.policyNumber,
+      c.claimType,
+      c.claimAmount,
+      c.status,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((val: string) => `"${String(val).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `claims-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleClaimAction = (claimId: string, status: string) => {
     updateClaimStatus.mutate(
       { id: claimId, status },
@@ -97,14 +133,16 @@ export function AdminClaimsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Claims Management
-          </h1>
           <p className="text-muted-foreground">
             Review and process insurance claims
           </p>
         </div>
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          className="pr-5"
+          onClick={handleExport}
+          disabled={!claims.length}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export Report
         </Button>
@@ -128,12 +166,12 @@ export function AdminClaimsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-warning/10">
-                <Clock className="h-6 w-6 text-warning" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Clock className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-warning">
+                <p className="text-2xl font-bold">
                   {stats?.pendingClaims ?? 0}
                 </p>
               </div>
@@ -143,12 +181,12 @@ export function AdminClaimsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle className="h-6 w-6 text-success" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold text-success">
+                <p className="text-2xl font-bold">
                   {stats?.approvedClaims ?? 0}
                 </p>
               </div>
@@ -158,12 +196,12 @@ export function AdminClaimsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                <XCircle className="h-6 w-6 text-destructive" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+                <XCircle className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold text-destructive">
+                <p className="text-2xl font-bold">
                   {stats?.rejectedClaims ?? 0}
                 </p>
               </div>

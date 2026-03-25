@@ -115,16 +115,13 @@ export function PolicyDetailsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
-            variant="outline"
-            size="icon"
+            variant="secondary"
             onClick={() => navigate("/dashboard/policies")}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Policies
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              Policy Details
-            </h1>
             <p className="text-muted-foreground">
               Policy #{policy.policyNumber}
             </p>

@@ -8,7 +8,6 @@ import {
   CreditCard,
   Settings,
   LogOut,
-  Shield,
 } from "lucide-react";
 
 import {
@@ -27,6 +26,7 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -73,27 +73,23 @@ export function AdminSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      {/* Header with Logo */}
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-            <Shield className="h-5 w-5 text-primary-foreground" />
+      {/* Header — h-14 matches top bar height for alignment */}
+      <SidebarHeader className="h-14 px-4 flex flex-row items-center gap-3 border-b border-sidebar-border">
+        <SidebarTrigger className="shrink-0" />
+        {!isCollapsed && (
+          <div className="flex flex-col min-w-0">
+            <span className="text-lg font-bold text-primary truncate">
+              DEBS Admin
+            </span>
+            <Badge variant="secondary" className="w-fit text-xs">
+              Admin Portal
+            </Badge>
           </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-primary">DEBS Admin</span>
-              <Badge variant="secondary" className="w-fit text-xs">
-                Admin Portal
-              </Badge>
-            </div>
-          )}
-        </div>
+        )}
       </SidebarHeader>
 
-      <Separator className="mx-4" />
-
       {/* Navigation Menu */}
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="py-4 overflow-hidden">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -125,8 +121,10 @@ export function AdminSidebar() {
       </SidebarContent>
 
       {/* Footer with User Info and Logout */}
-      <SidebarFooter className="p-4">
-        <Separator className="mb-4" />
+      <SidebarFooter
+        className={`overflow-hidden ${isCollapsed ? "p-2" : "p-4"}`}
+      >
+        {!isCollapsed && <Separator className="mb-4" />}
 
         {/* User Info */}
         <div className="flex items-center gap-3 mb-4">

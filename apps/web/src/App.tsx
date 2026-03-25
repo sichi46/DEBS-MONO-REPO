@@ -46,34 +46,25 @@ function App() {
       {/* Toast notifications */}
       <Toaster
         position="top-center"
-        containerStyle={{
-          top: 20,
-          zIndex: 99999,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: "420px",
-        }}
         toastOptions={{
-          duration: 4000,
+          duration: 3000,
           style: {
-            background: "hsl(var(--card))",
-            color: "hsl(var(--card-foreground))",
-            border: "1px solid hsl(var(--border))",
-            maxWidth: "420px",
-            width: "calc(100% - 2rem)",
-            margin: "0 auto",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            background: "#ffffff",
+            color: "#1A202C",
+            border: "1px solid #CBD5E0",
+            maxWidth: "360px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            fontSize: "14px",
           },
           success: {
             iconTheme: {
-              primary: "hsl(var(--success, 142 76% 36%))",
+              primary: "#28A745",
               secondary: "white",
             },
           },
           error: {
             iconTheme: {
-              primary: "hsl(var(--destructive))",
+              primary: "#DC3545",
               secondary: "white",
             },
           },

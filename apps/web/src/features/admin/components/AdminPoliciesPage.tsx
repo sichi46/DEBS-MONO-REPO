@@ -8,6 +8,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,19 +70,57 @@ export function AdminPoliciesPage() {
   const policies = data?.policies || [];
   const total = data?.pagination?.total ?? 0;
 
+  const handleExport = () => {
+    if (!policies.length) return;
+    const headers = [
+      "Policy Number",
+      "Customer",
+      "Email",
+      "Type",
+      "Coverage",
+      "Premium",
+      "Status",
+    ];
+    const rows = policies.map((p: any) => [
+      p.policyNumber,
+      p.userName,
+      p.userEmail,
+      p.policyType,
+      p.coverageAmount,
+      p.premiumAmount,
+      p.status,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((val: string) => `"${String(val).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `policies-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6" data-testid="admin-policies-page">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            All Policies
-          </h1>
           <p className="text-muted-foreground">
             View and manage all customer policies
           </p>
         </div>
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          className="pr-5"
+          onClick={handleExport}
+          disabled={!policies.length}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export
         </Button>
@@ -101,9 +140,7 @@ export function AdminPoliciesPage() {
           <CardContent className="p-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Active</p>
-              <p className="text-3xl font-bold text-success">
-                {stats?.activePolicies ?? 0}
-              </p>
+              <p className="text-3xl font-bold">{stats?.activePolicies ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -111,7 +148,7 @@ export function AdminPoliciesPage() {
           <CardContent className="p-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-3xl font-bold text-warning">
+              <p className="text-3xl font-bold">
                 {(stats?.totalPolicies ?? 0) - (stats?.activePolicies ?? 0)}
               </p>
             </div>
@@ -121,7 +158,7 @@ export function AdminPoliciesPage() {
           <CardContent className="p-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-              <p className="text-3xl font-bold text-primary">
+              <p className="text-3xl font-bold">
                 {stats?.monthlyRevenue ?? "ZMW 0"}
               </p>
             </div>
@@ -238,7 +275,14 @@ export function AdminPoliciesPage() {
                                   Download PDF
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() =>
+                                    toast.success(
+                                      `Policy ${policy.policyNumber} cancelled`,
+                                    )
+                                  }
+                                >
                                   <XCircle className="mr-2 h-4 w-4" />
                                   Cancel Policy
                                 </DropdownMenuItem>
