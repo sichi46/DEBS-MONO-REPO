@@ -26,6 +26,13 @@ export const config = {
     process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174"
   ).split(","),
 
+  // Lenco Payment Gateway
+  lenco: {
+    apiBaseUrl:
+      process.env.LENCO_API_BASE_URL || "https://api.lenco.co/access/v2",
+    apiToken: process.env.LENCO_API_TOKEN || "",
+  },
+
   // Email
   email: {
     host: process.env.SMTP_HOST,
