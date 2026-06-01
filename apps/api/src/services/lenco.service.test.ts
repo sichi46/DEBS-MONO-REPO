@@ -14,10 +14,12 @@ vi.mock("../lib/prisma", () => ({
       updateMany: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     lencoWebhookEvent: {
       create: vi.fn(),
       update: vi.fn(),
+      findUnique: vi.fn(),
     },
     lencoCollection: {
       create: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock("../lib/prisma", () => ({
     },
     claim: {
       updateMany: vi.fn(),
+      findUnique: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -231,6 +234,215 @@ describe("lencoService", () => {
         }),
       ).rejects.toThrow("Transfer recipient not found");
     });
+
+    // ── Double-payout guard tests ───────────────────────────────────────
+
+    const baseRecipient = { id: "rec-1", lencoId: "lenco-rec-1" };
+
+    it("should throw if claim not found", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce(null);
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-missing",
+        }),
+      ).rejects.toThrow("Claim not found");
+    });
+
+    it("should throw if claim status is PENDING (not APPROVED)", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "PENDING",
+        amount: 10000,
+        policy: { status: "ACTIVE" },
+      });
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-1",
+        }),
+      ).rejects.toThrow(
+        "Cannot initiate payout: claim status is PENDING, must be APPROVED",
+      );
+    });
+
+    it("should throw if claim status is REJECTED", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "REJECTED",
+        amount: 10000,
+        policy: { status: "ACTIVE" },
+      });
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-1",
+        }),
+      ).rejects.toThrow(
+        "Cannot initiate payout: claim status is REJECTED, must be APPROVED",
+      );
+    });
+
+    it("should throw if linked policy is not ACTIVE", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "APPROVED",
+        amount: 10000,
+        policy: { status: "EXPIRED" },
+      });
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-1",
+        }),
+      ).rejects.toThrow("Cannot initiate payout: linked policy is not ACTIVE");
+    });
+
+    it("should throw if transfer amount exceeds approved claim amount", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "APPROVED",
+        amount: 3000,
+        policy: { status: "ACTIVE" },
+      });
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-1",
+        }),
+      ).rejects.toThrow(
+        "Transfer amount 5000 exceeds approved claim amount 3000",
+      );
+    });
+
+    it("should throw if a SUCCESSFUL payout already exists for the claim", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "APPROVED",
+        amount: 10000,
+        policy: { status: "ACTIVE" },
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce({
+        id: "transfer-existing",
+        status: "SUCCESSFUL",
+        claimId: "claim-1",
+      });
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-1",
+        }),
+      ).rejects.toThrow("A successful payout already exists for this claim");
+    });
+
+    it("should throw if a PENDING payout already exists for the claim", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "APPROVED",
+        amount: 10000,
+        policy: { status: "ACTIVE" },
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce({
+        id: "transfer-existing",
+        status: "PENDING",
+        claimId: "claim-1",
+      });
+
+      await expect(
+        lencoService.initiateTransfer({
+          accountId: "acc-1",
+          recipientId: "rec-1",
+          amount: 5000,
+          narration: "Payout",
+          claimId: "claim-1",
+        }),
+      ).rejects.toThrow("A pending payout already exists for this claim");
+    });
+
+    it("should succeed when claim is APPROVED, policy ACTIVE, amount valid, no prior transfer", async () => {
+      mockPrisma.lencoTransferRecipient.findUnique.mockResolvedValueOnce(
+        baseRecipient,
+      );
+      mockPrisma.claim.findUnique.mockResolvedValueOnce({
+        id: "claim-1",
+        status: "APPROVED",
+        amount: 10000,
+        policy: { status: "ACTIVE" },
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce(null);
+      mockPrisma.lencoTransfer.create.mockResolvedValueOnce({
+        id: "transfer-new",
+        reference: "DEBS-XYZ",
+        status: "PENDING",
+      });
+      mockLenco.initiateBankTransfer.mockResolvedValueOnce({
+        status: true,
+        data: { id: "lenco-transfer-new" },
+      });
+      mockPrisma.lencoTransfer.update.mockResolvedValueOnce({
+        id: "transfer-new",
+        lencoId: "lenco-transfer-new",
+        status: "PROCESSING",
+        recipient: baseRecipient,
+      });
+
+      const result = await lencoService.initiateTransfer({
+        accountId: "acc-1",
+        recipientId: "rec-1",
+        amount: 5000,
+        narration: "Claim payout",
+        claimId: "claim-1",
+      });
+
+      expect(result.status).toBe("PROCESSING");
+      expect(mockPrisma.lencoTransfer.create).toHaveBeenCalledOnce();
+      expect(mockLenco.initiateBankTransfer).toHaveBeenCalledOnce();
+    });
   });
 
   describe("processWebhookEvent", () => {
@@ -248,7 +460,9 @@ describe("lencoService", () => {
         { reference: "DEBS-123" },
       );
 
-      expect(result.eventType).toBe("transfer.successful");
+      expect("skipped" in result ? null : result.eventType).toBe(
+        "transfer.successful",
+      );
       expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith({
         where: { reference: "DEBS-123" },
         data: { status: "SUCCESSFUL" },
@@ -395,6 +609,90 @@ describe("lencoService", () => {
       });
 
       expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
+    });
+
+    // ── Idempotency tests ──────────────────────────────────────────────
+
+    it("should return { skipped: true } for a duplicate webhook (same idempotency key, already processed)", async () => {
+      // Simulate an already-processed event stored with idempotencyKey
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce({
+        id: "evt-dup",
+        eventType: "transfer.successful",
+        processed: true,
+        idempotencyKey: "lenco-event-abc",
+      });
+
+      const result = await lencoService.processWebhookEvent(
+        "transfer.successful",
+        { id: "lenco-event-abc", reference: "DEBS-123" },
+      );
+
+      expect(result).toEqual({ skipped: true, reason: "duplicate" });
+      expect(mockPrisma.lencoWebhookEvent.create).not.toHaveBeenCalled();
+    });
+
+    it("should return { skipped: true } for a concurrent (not yet processed) duplicate delivery", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce({
+        id: "evt-inprogress",
+        eventType: "transfer.successful",
+        processed: false,
+        idempotencyKey: "transfer.successful:DEBS-CONCURRENT",
+      });
+
+      const result = await lencoService.processWebhookEvent(
+        "transfer.successful",
+        { reference: "DEBS-CONCURRENT" },
+      );
+
+      expect(result).toEqual({ skipped: true, reason: "duplicate" });
+      expect(mockPrisma.lencoWebhookEvent.create).not.toHaveBeenCalled();
+    });
+
+    it("should store idempotencyKey and process normally on first delivery", async () => {
+      // No prior event exists
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-new",
+        eventType: "transfer.successful",
+        idempotencyKey: "transfer.successful:DEBS-NEW",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      const result = await lencoService.processWebhookEvent(
+        "transfer.successful",
+        { reference: "DEBS-NEW" },
+      );
+
+      expect(mockPrisma.lencoWebhookEvent.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          idempotencyKey: "transfer.successful:DEBS-NEW",
+        }),
+      });
+      expect((result as any).id).toBe("evt-new");
+    });
+
+    it("should process webhook without idempotency key when neither id nor reference is present", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-noidp",
+        eventType: "unknown.event",
+      });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      const result = await lencoService.processWebhookEvent("unknown.event", {
+        someField: "someValue",
+      });
+
+      // findUnique should NOT have been called (no key to look up)
+      expect(mockPrisma.lencoWebhookEvent.findUnique).not.toHaveBeenCalled();
+      // create should have been called without idempotencyKey
+      expect(mockPrisma.lencoWebhookEvent.create).toHaveBeenCalledWith({
+        data: expect.not.objectContaining({
+          idempotencyKey: expect.anything(),
+        }),
+      });
+      expect((result as any).id).toBe("evt-noidp");
     });
   });
 

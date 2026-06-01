@@ -286,12 +286,14 @@ model LencoTransfer {
 }
 
 model LencoWebhookEvent {
-  id          String    @id @default(cuid())
-  eventType   String
-  payload     Json
-  processed   Boolean   @default(false)
-  processedAt DateTime?
-  createdAt   DateTime  @default(now())
+  id               String    @id @default(cuid())
+  eventType        String
+  payload          Json
+  processed        Boolean   @default(false)
+  processedAt      DateTime?
+  idempotencyKey   String?   @unique
+  processingError  String?
+  createdAt        DateTime  @default(now())
 
   @@map("lenco_webhook_events")
 }

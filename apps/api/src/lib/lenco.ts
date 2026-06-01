@@ -22,29 +22,54 @@ async function request<T>(
   method: string,
   path: string,
   body?: unknown,
+  attempt = 1,
 ): Promise<LencoResponse<T>> {
   const url = `${config.lenco.apiBaseUrl}${path}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${config.lenco.apiToken}`,
-      "Content-Type": "application/json",
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${config.lenco.apiToken}`,
+        "Content-Type": "application/json",
+        "User-Agent": "DEBS-Insurance-API/1.0",
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      signal: controller.signal,
+    });
 
-  const json = (await res.json()) as LencoResponse<T> & { message?: string };
+    clearTimeout(timeoutId);
+    const json = (await res.json()) as LencoResponse<T> & { message?: string };
 
-  if (!res.ok) {
-    throw new LencoApiError(
-      res.status,
-      `Lenco API error ${res.status}: ${json.message ?? "Unknown error"}`,
-      json.message,
-    );
+    if (!res.ok) {
+      throw new LencoApiError(
+        res.status,
+        `Lenco API error ${res.status}: ${json.message ?? "Unknown error"}`,
+        json.message,
+      );
+    }
+
+    return json as LencoResponse<T>;
+  } catch (err) {
+    clearTimeout(timeoutId);
+
+    const isRetryable =
+      (err instanceof LencoApiError &&
+        (err.statusCode === 429 || err.statusCode >= 500)) ||
+      (err instanceof Error && err.name === "AbortError") ||
+      (!(err instanceof LencoApiError) && err instanceof Error);
+
+    if (isRetryable && attempt < 3) {
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, attempt * 1_000),
+      );
+      return request<T>(method, path, body, attempt + 1);
+    }
+
+    throw err;
   }
-
-  return json as LencoResponse<T>;
 }
 
 export const lencoClient = {
@@ -97,6 +122,40 @@ export const lencoClient = {
     return request<unknown>(
       "GET",
       `/transfers/status/${encodeURIComponent(reference)}`,
+    );
+  },
+
+  // Collections
+  initiateMobileMoneyCollection(payload: {
+    amount: string;
+    currency?: string;
+    phoneNumber: string;
+    provider: string;
+    reference: string;
+    narration?: string;
+  }) {
+    return request<unknown>("POST", "/collections/mobile-money", {
+      ...payload,
+      currency: payload.currency ?? "ZMW",
+    });
+  },
+
+  getCollections(params?: { page?: number; limit?: number }) {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.limit) query.set("limit", String(params.limit));
+    const qs = query.toString();
+    return request<unknown[]>("GET", `/collections${qs ? `?${qs}` : ""}`);
+  },
+
+  getCollectionById(id: string) {
+    return request<unknown>("GET", `/collections/${encodeURIComponent(id)}`);
+  },
+
+  getCollectionByReference(reference: string) {
+    return request<unknown>(
+      "GET",
+      `/collections/status/${encodeURIComponent(reference)}`,
     );
   },
 };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { User, Bell, Shield, Building, Save, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { z } from "zod";
 
 import {
