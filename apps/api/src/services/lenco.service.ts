@@ -214,18 +214,89 @@ export const lencoService = {
 
     // Process based on event type
     if (eventType === "transfer.successful") {
-      await prisma.lencoTransfer.updateMany({
+      const transfers = await prisma.lencoTransfer.findMany({
         where: { reference },
-        data: { status: "SUCCESSFUL" },
+        select: { claimId: true },
+      });
+      const claimIds = transfers
+        .map((t) => t.claimId)
+        .filter((id): id is string => id !== null && id !== undefined);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.lencoTransfer.updateMany({
+          where: { reference },
+          data: { status: "SUCCESSFUL" },
+        });
+        if (claimIds.length > 0) {
+          await tx.claim.updateMany({
+            where: { id: { in: claimIds } },
+            data: {
+              payoutStatus: "PAID",
+              payoutCompletedAt: new Date(),
+            },
+          });
+        }
       });
     } else if (eventType === "transfer.failed") {
-      await prisma.lencoTransfer.updateMany({
+      const transfers = await prisma.lencoTransfer.findMany({
         where: { reference },
-        data: {
-          status: "FAILED",
-          failureReason: (payload.reason as string) ?? "Transfer failed",
-        },
+        select: { claimId: true },
       });
+      const claimIds = transfers
+        .map((t) => t.claimId)
+        .filter((id): id is string => id !== null && id !== undefined);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.lencoTransfer.updateMany({
+          where: { reference },
+          data: {
+            status: "FAILED",
+            failureReason: (payload.reason as string) ?? "Transfer failed",
+          },
+        });
+        if (claimIds.length > 0) {
+          await tx.claim.updateMany({
+            where: { id: { in: claimIds } },
+            data: { payoutStatus: "FAILED" },
+          });
+        }
+      });
+    } else if (eventType === "collection.successful") {
+      const collection = await prisma.lencoCollection.findUnique({
+        where: { reference },
+      });
+      if (collection) {
+        await prisma.lencoCollection.update({
+          where: { reference },
+          data: { status: "SUCCESSFUL" },
+        });
+        // Mark linked payment as PAID
+        if (collection.paymentId) {
+          await prisma.payment.update({
+            where: { id: collection.paymentId },
+            data: { status: "PAID", paidAt: new Date() },
+          });
+        }
+      }
+    } else if (eventType === "collection.failed") {
+      const collection = await prisma.lencoCollection.findUnique({
+        where: { reference },
+      });
+      if (collection) {
+        await prisma.lencoCollection.update({
+          where: { reference },
+          data: {
+            status: "FAILED",
+            failureReason: (payload.reason as string) ?? "Collection failed",
+          },
+        });
+        if (collection.paymentId) {
+          await prisma.payment.update({
+            where: { id: collection.paymentId },
+            data: { status: "FAILED" },
+          });
+        }
+      }
     }
 
     // Mark event as processed
@@ -235,5 +306,146 @@ export const lencoService = {
     });
 
     return event;
+  },
+
+  // ─── Collections (Mobile Money) ──────────────────────────────────────
+
+  async initiateMobileMoneyCollection(payload: {
+    userId: string;
+    policyId: string;
+    amount: number;
+    provider: string;
+    phoneNumber: string;
+  }) {
+    const reference = generateReference();
+
+    // Create a Payment record (PENDING)
+    const payment = await prisma.payment.create({
+      data: {
+        userId: payload.userId,
+        policyId: payload.policyId,
+        amount: payload.amount,
+        status: "PENDING",
+        method: "MOBILE_MONEY",
+      },
+    });
+
+    // Create local collection record
+    const collection = await prisma.lencoCollection.create({
+      data: {
+        reference,
+        userId: payload.userId,
+        policyId: payload.policyId,
+        amount: payload.amount,
+        provider: payload.provider.toUpperCase(),
+        phoneNumber: payload.phoneNumber,
+        status: "PENDING",
+        paymentId: payment.id,
+      },
+    });
+
+    try {
+      const res = await lencoClient.initiateMobileMoneyCollection({
+        amount: payload.amount.toString(),
+        phoneNumber: payload.phoneNumber,
+        provider: payload.provider.toUpperCase(),
+        reference,
+        narration: `DEBS Insurance premium payment`,
+      });
+
+      const lencoData = res.data as { id?: string };
+
+      return await prisma.lencoCollection.update({
+        where: { id: collection.id },
+        data: {
+          lencoId: lencoData.id ?? null,
+          lencoResponse: res.data as object,
+        },
+        include: { policy: { include: { policyType: true } } },
+      });
+    } catch (error) {
+      const message =
+        error instanceof LencoApiError
+          ? error.lencoMessage
+          : error instanceof Error
+            ? error.message
+            : "Unknown error";
+
+      await prisma.lencoCollection.update({
+        where: { id: collection.id },
+        data: {
+          status: "FAILED",
+          failureReason: message ?? "Lenco API call failed",
+        },
+      });
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: "FAILED" },
+      });
+      throw error;
+    }
+  },
+
+  async getCollections(params?: { page?: number; limit?: number }) {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [collections, total] = await Promise.all([
+      prisma.lencoCollection.findMany({
+        skip,
+        take: limit,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          policy: { include: { policyType: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.lencoCollection.count(),
+    ]);
+
+    return {
+      collections,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  },
+
+  async getCollectionStatus(reference: string) {
+    const local = await prisma.lencoCollection.findUnique({
+      where: { reference },
+      include: { user: true, policy: true, payment: true },
+    });
+
+    try {
+      const res = await lencoClient.getCollectionByReference(reference);
+      const lencoData = res.data as { status?: string };
+
+      if (local && lencoData.status) {
+        const statusMap: Record<string, string> = {
+          pending: "PENDING",
+          successful: "SUCCESSFUL",
+          failed: "FAILED",
+          "pay-offline": "PAY_OFFLINE",
+        };
+        const mapped = statusMap[lencoData.status.toLowerCase()];
+        if (mapped && mapped !== local.status) {
+          await prisma.lencoCollection.update({
+            where: { id: local.id },
+            data: {
+              status: mapped as
+                | "PENDING"
+                | "SUCCESSFUL"
+                | "FAILED"
+                | "PAY_OFFLINE",
+              lencoResponse: res.data as object,
+            },
+          });
+        }
+      }
+
+      return { local, lenco: res.data };
+    } catch {
+      return { local, lenco: null };
+    }
   },
 };

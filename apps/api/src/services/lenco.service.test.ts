@@ -13,11 +13,27 @@ vi.mock("../lib/prisma", () => ({
       update: vi.fn(),
       updateMany: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
     lencoWebhookEvent: {
       create: vi.fn(),
       update: vi.fn(),
     },
+    lencoCollection: {
+      create: vi.fn(),
+      update: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
+    },
+    payment: {
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    claim: {
+      updateMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -31,6 +47,8 @@ vi.mock("../lib/lenco", () => ({
     createBankRecipient: vi.fn(),
     initiateBankTransfer: vi.fn(),
     getTransferStatus: vi.fn(),
+    initiateMobileMoneyCollection: vi.fn(),
+    getCollectionByReference: vi.fn(),
   },
   LencoApiError: class LencoApiError extends Error {
     constructor(
@@ -53,6 +71,9 @@ const mockLenco = lencoClient as any;
 describe("lencoService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Make $transaction pass mockPrisma as the tx proxy so inner calls
+    // hit the same mocks as outer prisma calls
+    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockPrisma));
   });
 
   describe("getAccounts", () => {
@@ -218,6 +239,7 @@ describe("lencoService", () => {
         id: "evt-1",
         eventType: "transfer.successful",
       });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
       mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
 
@@ -238,6 +260,7 @@ describe("lencoService", () => {
         id: "evt-2",
         eventType: "transfer.failed",
       });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
       mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
 
@@ -253,6 +276,159 @@ describe("lencoService", () => {
           failureReason: "Insufficient funds",
         },
       });
+    });
+
+    it("should update collection and payment on collection.successful", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-3",
+        eventType: "collection.successful",
+      });
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "col-1",
+        reference: "DEBS-789",
+        paymentId: "pay-1",
+      });
+      mockPrisma.lencoCollection.update.mockResolvedValueOnce({});
+      mockPrisma.payment.update.mockResolvedValueOnce({});
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("collection.successful", {
+        reference: "DEBS-789",
+      });
+
+      expect(mockPrisma.lencoCollection.update).toHaveBeenCalledWith({
+        where: { reference: "DEBS-789" },
+        data: { status: "SUCCESSFUL" },
+      });
+      expect(mockPrisma.payment.update).toHaveBeenCalledWith({
+        where: { id: "pay-1" },
+        data: { status: "PAID", paidAt: expect.any(Date) },
+      });
+    });
+
+    it("should update collection and payment on collection.failed", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-4",
+        eventType: "collection.failed",
+      });
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "col-2",
+        reference: "DEBS-999",
+        paymentId: "pay-2",
+      });
+      mockPrisma.lencoCollection.update.mockResolvedValueOnce({});
+      mockPrisma.payment.update.mockResolvedValueOnce({});
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("collection.failed", {
+        reference: "DEBS-999",
+        reason: "User declined",
+      });
+
+      expect(mockPrisma.payment.update).toHaveBeenCalledWith({
+        where: { id: "pay-2" },
+        data: { status: "FAILED" },
+      });
+    });
+
+    it("should update linked claim to PAID on transfer.successful", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-c1",
+        eventType: "transfer.successful",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: "claim-1" },
+      ]);
+      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.claim.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.successful", {
+        reference: "DEBS-123",
+      });
+
+      expect(mockPrisma.claim.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ["claim-1"] } },
+        data: {
+          payoutStatus: "PAID",
+          payoutCompletedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it("should update linked claim to FAILED on transfer.failed", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-c2",
+        eventType: "transfer.failed",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: "claim-2" },
+      ]);
+      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.claim.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.failed", {
+        reference: "DEBS-456",
+        reason: "Insufficient funds",
+      });
+
+      expect(mockPrisma.claim.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ["claim-2"] } },
+        data: { payoutStatus: "FAILED" },
+      });
+    });
+
+    it("should not update claim when transfer has no claimId", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-c3",
+        eventType: "transfer.successful",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: null },
+      ]);
+      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.successful", {
+        reference: "DEBS-789",
+      });
+
+      expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("initiateMobileMoneyCollection", () => {
+    it("should create payment, collection, and call Lenco", async () => {
+      mockPrisma.payment.create.mockResolvedValueOnce({ id: "pay-1" });
+      mockPrisma.lencoCollection.create.mockResolvedValueOnce({
+        id: "col-1",
+        reference: "DEBS-123",
+        status: "PENDING",
+      });
+      mockLenco.initiateMobileMoneyCollection.mockResolvedValueOnce({
+        status: true,
+        data: { id: "lenco-col-1" },
+      });
+      mockPrisma.lencoCollection.update.mockResolvedValueOnce({
+        id: "col-1",
+        lencoId: "lenco-col-1",
+        status: "PENDING",
+        policy: { policyType: { name: "Life Insurance" } },
+      });
+
+      const result = await lencoService.initiateMobileMoneyCollection({
+        userId: "user-1",
+        policyId: "pol-1",
+        amount: 1200,
+        provider: "MTN",
+        phoneNumber: "260971234567",
+      });
+
+      expect(result.lencoId).toBe("lenco-col-1");
+      expect(mockPrisma.payment.create).toHaveBeenCalledOnce();
+      expect(mockPrisma.lencoCollection.create).toHaveBeenCalledOnce();
+      expect(mockLenco.initiateMobileMoneyCollection).toHaveBeenCalledOnce();
     });
   });
 });

@@ -157,16 +157,16 @@ export const lencoController = {
   async handleWebhook(req: Request, res: Response) {
     try {
       const signature = req.headers["x-lenco-signature"] as string;
-      const rawBody =
-        typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+      const rawBody = Buffer.isBuffer(req.body)
+        ? req.body.toString("utf8")
+        : JSON.stringify(req.body);
 
       if (!verifyLencoWebhook(rawBody, signature, config.lenco.apiToken)) {
         sendError(res, "Invalid webhook signature", 401);
         return;
       }
 
-      const body =
-        typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const body = Buffer.isBuffer(req.body) ? JSON.parse(rawBody) : req.body;
       const eventType = body.event as string;
 
       await lencoService.processWebhookEvent(eventType, body.data ?? body);
@@ -177,6 +177,81 @@ export const lencoController = {
       console.error("Lenco webhook error:", error);
       // Still return 200 to prevent Lenco from retrying
       res.status(200).json({ received: true, error: "Processing failed" });
+    }
+  },
+
+  // ─── Collections (Mobile Money) ──────────────────────────────────────
+
+  async initiateMobileMoneyCollection(
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
+    try {
+      const schema = z.object({
+        policyId: z.string().min(1, "Policy ID is required"),
+        amount: z.number().positive("Amount must be positive"),
+        provider: z.enum(["MTN", "AIRTEL", "ZAMTEL"], {
+          errorMap: () => ({
+            message: "Provider must be MTN, AIRTEL, or ZAMTEL",
+          }),
+        }),
+        phoneNumber: z.string().min(9, "Valid phone number required"),
+      });
+      const payload = schema.parse(req.body);
+
+      const data = await lencoService.initiateMobileMoneyCollection({
+        userId: req.user!.userId,
+        policyId: payload.policyId,
+        amount: payload.amount,
+        provider: payload.provider,
+        phoneNumber: payload.phoneNumber,
+      });
+      sendSuccess(res, data, "Mobile money collection initiated", 201);
+    } catch (error: unknown) {
+      console.error("Lenco collection error:", error);
+      if (error instanceof z.ZodError) {
+        sendError(res, "Invalid request: " + error.errors[0].message, 400);
+        return;
+      }
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to initiate collection"),
+        400,
+      );
+    }
+  },
+
+  async getCollections(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { page, limit } = req.query;
+      const data = await lencoService.getCollections({
+        page: page ? parseInt(page as string, 10) : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+      });
+      sendSuccess(res, data);
+    } catch (error: unknown) {
+      console.error("Lenco getCollections error:", error);
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to fetch collections"),
+        500,
+      );
+    }
+  },
+
+  async getCollectionStatus(req: AuthenticatedRequest, res: Response) {
+    try {
+      const data = await lencoService.getCollectionStatus(
+        req.params.reference as string,
+      );
+      sendSuccess(res, data);
+    } catch (error: unknown) {
+      console.error("Lenco getCollectionStatus error:", error);
+      sendError(
+        res,
+        getErrorMessage(error, "Failed to fetch collection status"),
+        500,
+      );
     }
   },
 };
