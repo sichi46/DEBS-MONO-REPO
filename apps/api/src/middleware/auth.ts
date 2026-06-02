@@ -11,41 +11,41 @@ import { prisma } from "../lib/prisma.js";
 export async function authenticate(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       sendError(res, "Access token required", 401);
       return;
     }
-    
+
     const token = authHeader.substring(7);
     const payload = verifyAccessToken(token);
-    
+
     if (!payload) {
       sendError(res, "Invalid or expired access token", 401);
       return;
     }
-    
+
     // Verify user still exists and is active
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: { id: true, status: true, role: true },
     });
-    
+
     if (!user) {
       sendError(res, "User not found", 401);
       return;
     }
-    
+
     if (user.status !== "ACTIVE") {
       sendError(res, "Account is not active", 403);
       return;
     }
-    
-    req.user = payload;
+
+    req.user = { userId: user.id, email: payload.email, role: user.role };
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
@@ -60,18 +60,18 @@ export function requireRole(...allowedRoles: UserRole[]) {
   return (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): void => {
     if (!req.user) {
       sendError(res, "Not authenticated", 401);
       return;
     }
-    
+
     if (!allowedRoles.includes(req.user.role)) {
       sendError(res, "Insufficient permissions", 403);
       return;
     }
-    
+
     next();
   };
 }

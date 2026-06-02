@@ -47,7 +47,8 @@ model User {
   policies      Policy[]
   claims        Claim[]
   payments      Payment[]
-  
+  lencoCollections LencoCollection[]
+
   @@map("users")
 }
 
@@ -90,6 +91,13 @@ enum ClaimStatus {
   UNDER_REVIEW
   APPROVED
   REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
 }
 
 enum PaymentStatus {
@@ -144,7 +152,8 @@ model Policy {
   beneficiaries   Beneficiary[]
   claims          Claim[]
   payments        Payment[]
-  
+  lencoCollections LencoCollection[]
+
   @@map("policies")
 }
 
@@ -183,7 +192,11 @@ model Claim {
   submittedAt   DateTime    @default(now())
   processedAt   DateTime?
   processedBy   String?     // Admin user ID who processed
-  
+
+  payoutStatus       PayoutStatus?
+  payoutAmount       Decimal?      @db.Decimal(12, 2)
+  payoutCompletedAt  DateTime?
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -211,7 +224,9 @@ model Payment {
   
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  
+
+  lencoCollection LencoCollection?
+
   @@map("payments")
 }
 
@@ -279,4 +294,40 @@ model LencoWebhookEvent {
   createdAt   DateTime  @default(now())
 
   @@map("lenco_webhook_events")
+}
+
+enum LencoCollectionStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  PAY_OFFLINE
+}
+
+model LencoCollection {
+  id            String                @id @default(cuid())
+  lencoId       String?               @unique
+  reference     String                @unique
+
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id])
+
+  policyId      String
+  policy        Policy                @relation(fields: [policyId], references: [id])
+
+  amount        Decimal               @db.Decimal(12, 2)
+  currency      String                @default("ZMW")
+  provider      String
+  phoneNumber   String
+  status        LencoCollectionStatus @default(PENDING)
+
+  paymentId     String?               @unique
+  payment       Payment?              @relation(fields: [paymentId], references: [id])
+
+  lencoResponse Json?
+  failureReason String?
+
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@map("lenco_collections")
 }

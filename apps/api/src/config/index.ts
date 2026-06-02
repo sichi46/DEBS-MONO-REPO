@@ -48,6 +48,7 @@ const requiredEnvVars = [
   "DATABASE_URL",
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
+  "LENCO_API_TOKEN",
 ];
 
 export function validateConfig(): void {

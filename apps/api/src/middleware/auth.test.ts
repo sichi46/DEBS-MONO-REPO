@@ -152,6 +152,31 @@ describe("authenticate", () => {
     expect(next).toHaveBeenCalled();
     expect(sendError).not.toHaveBeenCalled();
   });
+
+  it("uses the DB role, not the JWT role, when they differ", async () => {
+    const req = mockReq({
+      headers: { authorization: "Bearer valid-token" },
+    });
+    const res = mockRes();
+    const next = mockNext();
+
+    (verifyAccessToken as any).mockReturnValue({
+      userId: "user-1",
+      email: "admin@example.com",
+      role: UserRole.ADMIN,
+    });
+    (prisma.user.findUnique as any).mockResolvedValue({
+      id: "user-1",
+      status: "ACTIVE",
+      role: UserRole.USER,
+    });
+
+    await authenticate(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.user?.role).toBe(UserRole.USER);
+    expect(sendError).not.toHaveBeenCalled();
+  });
 });
 
 describe("requireRole", () => {
