@@ -3,7 +3,7 @@ import { useRecoilState } from "recoil";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { User, Bell, Shield, Smartphone, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,10 +105,9 @@ export function SettingsPage() {
         toast.success("Profile updated successfully");
       }
     } catch (error) {
-      toast.error("Failed to update profile", {
-        description:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile",
+      );
     } finally {
       setIsProfileLoading(false);
     }
@@ -121,12 +120,9 @@ export function SettingsPage() {
       toast.success("Password changed successfully");
       passwordForm.reset();
     } catch (error) {
-      toast.error("Failed to change password", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Ensure current password is correct",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to change password",
+      );
     } finally {
       setIsPasswordLoading(false);
     }

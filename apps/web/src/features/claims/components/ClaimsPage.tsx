@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileText, Plus, Upload, CheckCircle } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import {
   useClaims,
   usePoliciesForClaim,
@@ -149,9 +149,9 @@ export function ClaimsPage() {
         description: result.data.description,
       });
 
-      toast.success("Claim submitted successfully!", {
-        description: "You will receive updates via email.",
-      });
+      toast.success(
+        "Claim submitted successfully! You will receive updates via email.",
+      );
       setIsDialogOpen(false);
       setFormData({
         policyNumber: "",

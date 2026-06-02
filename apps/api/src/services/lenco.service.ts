@@ -98,6 +98,43 @@ export const lencoService = {
       throw new Error("Transfer recipient not found");
     }
 
+    // ── Double-payout guard ────────────────────────────────────────────
+    if (payload.claimId) {
+      const claim = await prisma.claim.findUnique({
+        where: { id: payload.claimId },
+        include: { policy: true },
+      });
+
+      if (!claim) {
+        throw new Error("Claim not found");
+      }
+      if (claim.status !== "APPROVED") {
+        throw new Error(
+          `Cannot initiate payout: claim status is ${claim.status}, must be APPROVED`,
+        );
+      }
+      if (claim.policy.status !== "ACTIVE") {
+        throw new Error("Cannot initiate payout: linked policy is not ACTIVE");
+      }
+      if (payload.amount > Number(claim.amount)) {
+        throw new Error(
+          `Transfer amount ${payload.amount} exceeds approved claim amount ${claim.amount}`,
+        );
+      }
+
+      const existingTransfer = await prisma.lencoTransfer.findFirst({
+        where: {
+          claimId: payload.claimId,
+          status: { in: ["PENDING", "PROCESSING", "SUCCESSFUL"] },
+        },
+      });
+      if (existingTransfer) {
+        throw new Error(
+          `A ${existingTransfer.status.toLowerCase()} payout already exists for this claim`,
+        );
+      }
+    }
+
     // Create local record first (PENDING)
     const transfer = await prisma.lencoTransfer.create({
       data: {
@@ -201,13 +238,44 @@ export const lencoService = {
   async processWebhookEvent(
     eventType: string,
     payload: Record<string, unknown>,
-  ) {
+  ): Promise<
+    | { id: string; eventType: string; [key: string]: unknown }
+    | { skipped: true; reason: string }
+  > {
+    // ── Idempotency check ──────────────────────────────────────────────
+    // ASSUMPTION: Lenco may include a top-level "id" field on webhook
+    // payloads as a unique event identifier. When present, it is used as
+    // the idempotency key. Otherwise we fall back to a composite key of
+    // eventType + ":" + reference. If neither exists no key is derived and
+    // the event is processed without idempotency protection.
+    const reference = payload.reference as string | undefined;
+    const idempotencyKey: string | undefined =
+      typeof payload.id === "string" && payload.id
+        ? payload.id
+        : reference
+          ? `${eventType}:${reference}`
+          : undefined;
+
+    if (idempotencyKey) {
+      const existing = await prisma.lencoWebhookEvent.findUnique({
+        where: { idempotencyKey },
+      });
+      if (existing) {
+        // Guard against both already-processed events (duplicate delivery)
+        // and events still in flight (concurrent delivery).
+        return { skipped: true, reason: "duplicate" };
+      }
+    }
+
     // Store event for audit trail
     const event = await prisma.lencoWebhookEvent.create({
-      data: { eventType, payload: payload as object },
+      data: {
+        eventType,
+        payload: payload as object,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      },
     });
 
-    const reference = payload.reference as string | undefined;
     if (!reference) {
       return event;
     }
