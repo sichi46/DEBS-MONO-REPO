@@ -299,98 +299,133 @@ export const lencoService = {
       },
     });
 
-    if (!reference) {
-      return event;
-    }
+    // ── transaction.debit — Lenco fires this when an outbound bank transfer
+    // completes. The payload has no reference field; the Lenco reference is
+    // appended to the narration as "<our narration> / <lencoRef>".
+    if (eventType === "transaction.debit") {
+      const narration = payload.narration as string | undefined;
+      const lencoRef = narration?.split(" / ").at(-1)?.trim();
 
-    // Process based on event type
-    if (eventType === "transfer.successful") {
-      const transfers = await prisma.lencoTransfer.findMany({
-        where: { reference },
-        select: { claimId: true },
-      });
-      const claimIds = transfers
-        .map((t) => t.claimId)
-        .filter((id): id is string => id !== null && id !== undefined);
-
-      await prisma.$transaction(async (tx) => {
-        await tx.lencoTransfer.updateMany({
-          where: { reference },
-          data: { status: "SUCCESSFUL" },
+      if (lencoRef) {
+        const transfer = await prisma.lencoTransfer.findFirst({
+          where: {
+            lencoResponse: { path: ["lencoReference"], equals: lencoRef },
+            status: { notIn: ["SUCCESSFUL", "FAILED", "REVERSED"] },
+          },
+          select: { id: true, claimId: true },
         });
-        if (claimIds.length > 0) {
-          await tx.claim.updateMany({
-            where: { id: { in: claimIds } },
+
+        if (transfer) {
+          await prisma.$transaction(async (tx) => {
+            await tx.lencoTransfer.update({
+              where: { id: transfer.id },
+              data: { status: "SUCCESSFUL" },
+            });
+            if (transfer.claimId) {
+              await tx.claim.update({
+                where: { id: transfer.claimId },
+                data: {
+                  payoutStatus: "PAID",
+                  payoutCompletedAt: new Date(),
+                },
+              });
+            }
+          });
+        }
+      }
+    } else if (eventType === "transaction.credit") {
+      // Lenco fires this when money arrives in the merchant account.
+      // collection.successful handles the business logic for mobile money;
+      // this is an account-level notification only — no additional action.
+    } else if (reference) {
+      // Reference-based events (collection and legacy transfer events)
+      if (eventType === "transfer.successful") {
+        const transfers = await prisma.lencoTransfer.findMany({
+          where: { reference },
+          select: { claimId: true },
+        });
+        const claimIds = transfers
+          .map((t) => t.claimId)
+          .filter((id): id is string => id !== null && id !== undefined);
+
+        await prisma.$transaction(async (tx) => {
+          await tx.lencoTransfer.updateMany({
+            where: { reference },
+            data: { status: "SUCCESSFUL" },
+          });
+          if (claimIds.length > 0) {
+            await tx.claim.updateMany({
+              where: { id: { in: claimIds } },
+              data: {
+                payoutStatus: "PAID",
+                payoutCompletedAt: new Date(),
+              },
+            });
+          }
+        });
+      } else if (eventType === "transfer.failed") {
+        const transfers = await prisma.lencoTransfer.findMany({
+          where: { reference },
+          select: { claimId: true },
+        });
+        const claimIds = transfers
+          .map((t) => t.claimId)
+          .filter((id): id is string => id !== null && id !== undefined);
+
+        await prisma.$transaction(async (tx) => {
+          await tx.lencoTransfer.updateMany({
+            where: { reference },
             data: {
-              payoutStatus: "PAID",
-              payoutCompletedAt: new Date(),
+              status: "FAILED",
+              failureReason: (payload.reason as string) ?? "Transfer failed",
             },
           });
-        }
-      });
-    } else if (eventType === "transfer.failed") {
-      const transfers = await prisma.lencoTransfer.findMany({
-        where: { reference },
-        select: { claimId: true },
-      });
-      const claimIds = transfers
-        .map((t) => t.claimId)
-        .filter((id): id is string => id !== null && id !== undefined);
-
-      await prisma.$transaction(async (tx) => {
-        await tx.lencoTransfer.updateMany({
-          where: { reference },
-          data: {
-            status: "FAILED",
-            failureReason: (payload.reason as string) ?? "Transfer failed",
-          },
+          if (claimIds.length > 0) {
+            await tx.claim.updateMany({
+              where: { id: { in: claimIds } },
+              data: { payoutStatus: "FAILED" },
+            });
+          }
         });
-        if (claimIds.length > 0) {
-          await tx.claim.updateMany({
-            where: { id: { in: claimIds } },
-            data: { payoutStatus: "FAILED" },
-          });
-        }
-      });
-    } else if (eventType === "collection.successful") {
-      const collection = await prisma.lencoCollection.findUnique({
-        where: { reference },
-      });
-      if (collection) {
-        await prisma.lencoCollection.update({
+      } else if (eventType === "collection.successful") {
+        const collection = await prisma.lencoCollection.findUnique({
           where: { reference },
-          data: { status: "SUCCESSFUL" },
         });
-        // Mark linked payment as PAID
-        if (collection.paymentId) {
-          await prisma.payment.update({
-            where: { id: collection.paymentId },
-            data: { status: "PAID", paidAt: new Date() },
+        if (collection) {
+          await prisma.lencoCollection.update({
+            where: { reference },
+            data: { status: "SUCCESSFUL" },
           });
+          if (collection.paymentId) {
+            await prisma.payment.update({
+              where: { id: collection.paymentId },
+              data: { status: "PAID", paidAt: new Date() },
+            });
+          }
         }
-      }
-    } else if (eventType === "collection.failed") {
-      const collection = await prisma.lencoCollection.findUnique({
-        where: { reference },
-      });
-      if (collection) {
-        await prisma.lencoCollection.update({
+      } else if (eventType === "collection.failed") {
+        const collection = await prisma.lencoCollection.findUnique({
           where: { reference },
-          data: {
-            status: "FAILED",
-            failureReason: (payload.reason as string) ?? "Collection failed",
-          },
         });
-        if (collection.paymentId) {
-          await prisma.payment.update({
-            where: { id: collection.paymentId },
-            data: { status: "FAILED" },
+        if (collection) {
+          await prisma.lencoCollection.update({
+            where: { reference },
+            data: {
+              status: "FAILED",
+              failureReason: (payload.reason as string) ?? "Collection failed",
+            },
           });
+          if (collection.paymentId) {
+            await prisma.payment.update({
+              where: { id: collection.paymentId },
+              data: { status: "FAILED" },
+            });
+          }
         }
       }
     }
 
-    // Mark event as processed
+    // Mark event as processed for all event types
     await prisma.lencoWebhookEvent.update({
       where: { id: event.id },
       data: { processed: true, processedAt: new Date() },

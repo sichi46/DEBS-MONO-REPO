@@ -33,6 +33,7 @@ vi.mock("../lib/prisma", () => ({
       update: vi.fn(),
     },
     claim: {
+      update: vi.fn(),
       updateMany: vi.fn(),
       findUnique: vi.fn(),
     },
@@ -609,6 +610,88 @@ describe("lencoService", () => {
       });
 
       expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
+    });
+
+    // ── transaction.debit / transaction.credit ────────────────────────
+
+    it("should update transfer and claim on transaction.debit when narration contains lencoReference", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-debit-1",
+        eventType: "transaction.debit",
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce({
+        id: "transfer-debit-1",
+        claimId: "claim-debit-1",
+      });
+      mockPrisma.$transaction.mockImplementationOnce(
+        (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma),
+      );
+      mockPrisma.lencoTransfer.update.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.claim.update.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transaction.debit", {
+        id: "evt-uuid-debit",
+        narration: "DEBS CLM-2024-0001 payout / 2615402981",
+        amount: "5.00",
+      });
+
+      expect(mockPrisma.lencoTransfer.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            lencoResponse: { path: ["lencoReference"], equals: "2615402981" },
+          }),
+        }),
+      );
+      expect(mockPrisma.lencoTransfer.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: "SUCCESSFUL" } }),
+      );
+      expect(mockPrisma.claim.update).toHaveBeenCalledWith({
+        where: { id: "claim-debit-1" },
+        data: { payoutStatus: "PAID", payoutCompletedAt: expect.any(Date) },
+      });
+    });
+
+    it("should not update anything on transaction.debit when no matching transfer found", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-debit-2",
+        eventType: "transaction.debit",
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transaction.debit", {
+        id: "evt-uuid-debit-2",
+        narration: "Some payout / 9999999999",
+        amount: "5.00",
+      });
+
+      expect(mockPrisma.lencoTransfer.update).not.toHaveBeenCalled();
+      expect(mockPrisma.claim.update).not.toHaveBeenCalled();
+    });
+
+    it("should store and mark processed on transaction.credit without business logic", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-credit-1",
+        eventType: "transaction.credit",
+      });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transaction.credit", {
+        id: "evt-uuid-credit",
+        amount: "25.00",
+        narration: "sichilima mulenga MP260603.1100.G60890",
+      });
+
+      expect(mockPrisma.lencoWebhookEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ processed: true }),
+        }),
+      );
+      expect(mockPrisma.lencoTransfer.update).not.toHaveBeenCalled();
     });
 
     // ── Idempotency tests ──────────────────────────────────────────────
