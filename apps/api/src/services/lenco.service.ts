@@ -307,20 +307,29 @@ export const lencoService = {
       const lencoRef = narration?.split(" / ").at(-1)?.trim();
 
       if (lencoRef) {
+        // Find the transfer regardless of current status — polling may have
+        // already marked it SUCCESSFUL but the claim may still be unpaid.
         const transfer = await prisma.lencoTransfer.findFirst({
           where: {
             lencoResponse: { path: ["lencoReference"], equals: lencoRef },
-            status: { notIn: ["SUCCESSFUL", "FAILED", "REVERSED"] },
           },
-          select: { id: true, claimId: true },
+          select: { id: true, claimId: true, status: true },
         });
 
         if (transfer) {
           await prisma.$transaction(async (tx) => {
-            await tx.lencoTransfer.update({
-              where: { id: transfer.id },
-              data: { status: "SUCCESSFUL" },
-            });
+            // Only update transfer if not already in a terminal state
+            if (
+              !["SUCCESSFUL", "FAILED", "REVERSED"].includes(transfer.status)
+            ) {
+              await tx.lencoTransfer.update({
+                where: { id: transfer.id },
+                data: { status: "SUCCESSFUL" },
+              });
+            }
+            // Always update the linked claim — polling syncs transfer status
+            // but never updates payoutStatus; this webhook is the authoritative
+            // signal that the payout completed.
             if (transfer.claimId) {
               await tx.claim.update({
                 where: { id: transfer.claimId },
