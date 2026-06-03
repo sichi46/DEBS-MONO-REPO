@@ -158,15 +158,36 @@ export const lencoService = {
         reference,
       });
 
-      const lencoData = res.data as { id?: string };
+      const lencoData = res.data as {
+        id?: string;
+        status?: string;
+        reasonForFailure?: string;
+      };
 
-      // Update with Lenco response
+      const statusMap: Record<
+        string,
+        "PENDING" | "PROCESSING" | "SUCCESSFUL" | "FAILED" | "REVERSED"
+      > = {
+        pending: "PENDING",
+        processing: "PROCESSING",
+        successful: "SUCCESSFUL",
+        failed: "FAILED",
+        reversed: "REVERSED",
+      };
+      const mappedStatus =
+        (lencoData.status ? statusMap[lencoData.status.toLowerCase()] : null) ??
+        "PROCESSING";
+
+      // Update with Lenco response, reflecting the actual status Lenco returned
       return await prisma.lencoTransfer.update({
         where: { id: transfer.id },
         data: {
           lencoId: lencoData.id ?? null,
-          status: "PROCESSING",
+          status: mappedStatus,
           lencoResponse: res.data as object,
+          ...(mappedStatus === "FAILED" && {
+            failureReason: lencoData.reasonForFailure ?? "Transfer failed",
+          }),
         },
         include: { recipient: true },
       });
