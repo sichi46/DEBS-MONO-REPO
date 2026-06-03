@@ -109,9 +109,7 @@ export const lencoClient = {
     country?: string;
   }) {
     return request<unknown>("POST", "/transfer-recipients/bank-account", {
-      accountName: payload.accountName,
-      accountNumber: payload.accountNumber,
-      bankCode: payload.bankId, // Lenco expects bankCode, not bankId
+      ...payload,
       currency: payload.currency ?? "ZMW",
       country: payload.country ?? "ZM",
     });
@@ -120,7 +118,8 @@ export const lencoClient = {
   // Transfers
   initiateBankTransfer(payload: {
     accountId: string;
-    recipientId: string;
+    accountNumber: string;
+    bankId: string;
     amount: string;
     narration: string;
     reference: string;

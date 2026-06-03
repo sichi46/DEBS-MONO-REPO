@@ -149,10 +149,12 @@ export const lencoService = {
     });
 
     try {
-      // Call Lenco
+      // Call Lenco — use accountNumber+bankId directly; recipientId is not
+      // supported for Zambian bank transfers in the Lenco V2 API
       const res = await lencoClient.initiateBankTransfer({
         accountId: payload.accountId,
-        recipientId: recipient.lencoId,
+        accountNumber: recipient.accountNumber,
+        bankId: recipient.bankId,
         amount: payload.amount.toString(),
         narration: payload.narration,
         reference,
