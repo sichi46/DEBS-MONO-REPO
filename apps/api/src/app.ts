@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import policiesRoutes from "./routes/policies.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import lencoRoutes from "./routes/lenco.routes.js";
+import lencoCaptureRoutes from "./routes/lenco-capture.routes.js";
 import { sendError } from "./utils/response.js";
 
 // Validate required environment variables at startup
@@ -67,6 +68,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/policies", policiesRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/lenco", lencoRoutes);
+app.use("/api/lenco", lencoCaptureRoutes);
 
 // =============================================================================
 // 404 Handler
