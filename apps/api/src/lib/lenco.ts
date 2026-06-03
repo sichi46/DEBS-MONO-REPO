@@ -41,6 +41,14 @@ async function request<T>(
     });
 
     clearTimeout(timeoutId);
+
+    if (!res.headers.get("content-type")?.includes("application/json")) {
+      throw new LencoApiError(
+        res.status,
+        `Lenco API returned non-JSON response (status ${res.status})`,
+      );
+    }
+
     const json = (await res.json()) as LencoResponse<T> & { message?: string };
 
     if (!res.ok) {
@@ -101,7 +109,9 @@ export const lencoClient = {
     country?: string;
   }) {
     return request<unknown>("POST", "/transfer-recipients/bank-account", {
-      ...payload,
+      accountName: payload.accountName,
+      accountNumber: payload.accountNumber,
+      bankCode: payload.bankId, // Lenco expects bankCode, not bankId
       currency: payload.currency ?? "ZMW",
       country: payload.country ?? "ZM",
     });
@@ -126,6 +136,8 @@ export const lencoClient = {
   },
 
   // Collections
+  // NOTE: Lenco API uses "phone" and "operator" (not "phoneNumber"/"provider").
+  // Confirmed from Phase 2.5 live collection response observation.
   initiateMobileMoneyCollection(payload: {
     amount: string;
     currency?: string;
@@ -135,8 +147,12 @@ export const lencoClient = {
     narration?: string;
   }) {
     return request<unknown>("POST", "/collections/mobile-money", {
-      ...payload,
+      amount: payload.amount,
       currency: payload.currency ?? "ZMW",
+      phone: payload.phoneNumber,
+      operator: payload.provider,
+      reference: payload.reference,
+      ...(payload.narration ? { narration: payload.narration } : {}),
     });
   },
 
