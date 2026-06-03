@@ -46,6 +46,24 @@ router.get(
   lencoController.getTransferStatus,
 );
 
+// Authenticated: mobile money collections (premium payments)
+router.post(
+  "/collections/mobile-money",
+  authenticate,
+  lencoController.initiateMobileMoneyCollection,
+);
+router.get(
+  "/collections",
+  authenticate,
+  requireAdmin,
+  lencoController.getCollections,
+);
+router.get(
+  "/collections/:reference/status",
+  authenticate,
+  lencoController.getCollectionStatus,
+);
+
 // Public: webhook receiver (signature-verified internally)
 router.post("/webhooks", lencoController.handleWebhook);
 
