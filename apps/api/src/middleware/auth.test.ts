@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Request, Response, NextFunction } from "express";
 import { UserRole } from "@prisma/client";
 
 process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "test-access";
@@ -32,20 +33,20 @@ import { prisma } from "../lib/prisma.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 import { sendError } from "../utils/response.js";
 
-function mockReq(overrides: Record<string, any> = {}) {
+function mockReq(overrides: Record<string, unknown> = {}): Request {
   return {
     headers: {},
     user: undefined,
     ...overrides,
-  } as any;
+  } as unknown as Request;
 }
 
-function mockRes() {
-  return {} as any;
+function mockRes(): Response {
+  return {} as unknown as Response;
 }
 
-function mockNext() {
-  return vi.fn();
+function mockNext(): NextFunction {
+  return vi.fn() as unknown as NextFunction;
 }
 
 describe("authenticate", () => {
@@ -71,7 +72,7 @@ describe("authenticate", () => {
     const res = mockRes();
     const next = mockNext();
 
-    (verifyAccessToken as any).mockReturnValue(null);
+    vi.mocked(verifyAccessToken).mockReturnValue(null as never);
 
     await authenticate(req, res, next);
 
@@ -90,12 +91,12 @@ describe("authenticate", () => {
     const res = mockRes();
     const next = mockNext();
 
-    (verifyAccessToken as any).mockReturnValue({
+    vi.mocked(verifyAccessToken).mockReturnValue({
       userId: "user-1",
       email: "user@example.com",
       role: UserRole.USER,
-    });
-    (prisma.user.findUnique as any).mockResolvedValue(null);
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
     await authenticate(req, res, next);
 
@@ -110,16 +111,16 @@ describe("authenticate", () => {
     const res = mockRes();
     const next = mockNext();
 
-    (verifyAccessToken as any).mockReturnValue({
+    vi.mocked(verifyAccessToken).mockReturnValue({
       userId: "user-1",
       email: "user@example.com",
       role: UserRole.USER,
-    });
-    (prisma.user.findUnique as any).mockResolvedValue({
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: "user-1",
       status: "SUSPENDED",
       role: UserRole.USER,
-    });
+    } as never);
 
     await authenticate(req, res, next);
 
@@ -139,16 +140,16 @@ describe("authenticate", () => {
     const res = mockRes();
     const next = mockNext();
 
-    (verifyAccessToken as any).mockReturnValue(payload);
-    (prisma.user.findUnique as any).mockResolvedValue({
+    vi.mocked(verifyAccessToken).mockReturnValue(payload as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: "user-1",
       status: "ACTIVE",
       role: UserRole.USER,
-    });
+    } as never);
 
     await authenticate(req, res, next);
 
-    expect(req.user).toEqual(payload);
+    expect((req as unknown as { user: unknown }).user).toEqual(payload);
     expect(next).toHaveBeenCalled();
     expect(sendError).not.toHaveBeenCalled();
   });
@@ -160,21 +161,23 @@ describe("authenticate", () => {
     const res = mockRes();
     const next = mockNext();
 
-    (verifyAccessToken as any).mockReturnValue({
+    vi.mocked(verifyAccessToken).mockReturnValue({
       userId: "user-1",
       email: "admin@example.com",
       role: UserRole.ADMIN,
-    });
-    (prisma.user.findUnique as any).mockResolvedValue({
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: "user-1",
       status: "ACTIVE",
       role: UserRole.USER,
-    });
+    } as never);
 
     await authenticate(req, res, next);
 
     expect(next).toHaveBeenCalled();
-    expect(req.user?.role).toBe(UserRole.USER);
+    expect((req as unknown as { user: { role: UserRole } }).user?.role).toBe(
+      UserRole.USER,
+    );
     expect(sendError).not.toHaveBeenCalled();
   });
 });

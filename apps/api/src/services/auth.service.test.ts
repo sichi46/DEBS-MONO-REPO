@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UserRole, UserStatus } from "@prisma/client";
 
 process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "test-access";
-process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "test-refresh";
+process.env.JWT_REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET || "test-refresh";
 
 vi.mock("../lib/prisma.js", () => {
   const prisma = {
@@ -60,9 +61,9 @@ describe("authService", () => {
   });
 
   it("stores hashed refresh token on login", async () => {
-    (prisma.user.findUnique as any).mockResolvedValue(baseUser);
-    (prisma.user.update as any).mockResolvedValue(baseUser);
-    (prisma.refreshToken.create as any).mockResolvedValue({});
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(baseUser as never);
+    vi.mocked(prisma.user.update).mockResolvedValue(baseUser as never);
+    vi.mocked(prisma.refreshToken.create).mockResolvedValue({} as never);
 
     const result = await authService.login({
       email: baseUser.email,
@@ -75,7 +76,7 @@ describe("authService", () => {
           tokenHash: hashRefreshToken(result.tokens.refreshToken),
           userId: baseUser.id,
         }),
-      })
+      }),
     );
   });
 
@@ -86,7 +87,7 @@ describe("authService", () => {
       role: baseUser.role,
     });
 
-    (prisma.refreshToken.findUnique as any).mockResolvedValue({
+    vi.mocked(prisma.refreshToken.findUnique).mockResolvedValue({
       id: "rt-1",
       tokenHash: hashRefreshToken(tokens.refreshToken),
       userId: baseUser.id,
@@ -97,30 +98,30 @@ describe("authService", () => {
         role: baseUser.role,
         status: baseUser.status,
       },
-    });
-    (prisma.refreshToken.delete as any).mockResolvedValue({});
-    (prisma.refreshToken.create as any).mockResolvedValue({});
+    } as never);
+    vi.mocked(prisma.refreshToken.delete).mockResolvedValue({} as never);
+    vi.mocked(prisma.refreshToken.create).mockResolvedValue({} as never);
 
     await authService.refreshToken(tokens.refreshToken);
 
     expect(prisma.refreshToken.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { tokenHash: hashRefreshToken(tokens.refreshToken) },
-      })
+      }),
     );
   });
 
   it("revokes refresh tokens on password change", async () => {
-    (prisma.user.findUnique as any).mockResolvedValue(baseUser);
-    (prisma.user.update as any).mockResolvedValue(baseUser);
-    (prisma.refreshToken.deleteMany as any).mockResolvedValue({});
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(baseUser as never);
+    vi.mocked(prisma.user.update).mockResolvedValue(baseUser as never);
+    vi.mocked(prisma.refreshToken.deleteMany).mockResolvedValue({} as never);
 
     await authService.changePassword(baseUser.id, "current", "next");
 
     expect(prisma.refreshToken.deleteMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: baseUser.id },
-      })
+      }),
     );
   });
 });

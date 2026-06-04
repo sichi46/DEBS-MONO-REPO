@@ -22,7 +22,7 @@ describe("policiesService", () => {
   });
 
   it("rejects invalid policy type", async () => {
-    (prisma.policyType.findUnique as any).mockResolvedValue(null);
+    vi.mocked(prisma.policyType.findUnique).mockResolvedValue(null);
 
     await expect(
       policiesService.createPolicy({
@@ -32,14 +32,14 @@ describe("policiesService", () => {
         premiumAmount: 10,
         paymentFrequency: "Monthly",
         beneficiaries: [{ name: "A", relationship: "Spouse", percentage: 100 }],
-      })
+      }),
     ).rejects.toThrow("Invalid policy type");
   });
 
   it("rejects premium below minimum", async () => {
-    (prisma.policyType.findUnique as any).mockResolvedValue({
+    vi.mocked(prisma.policyType.findUnique).mockResolvedValue({
       minPremium: new Prisma.Decimal(100),
-    });
+    } as never);
 
     await expect(
       policiesService.createPolicy({
@@ -49,7 +49,7 @@ describe("policiesService", () => {
         premiumAmount: 50,
         paymentFrequency: "Monthly",
         beneficiaries: [{ name: "A", relationship: "Spouse", percentage: 100 }],
-      })
+      }),
     ).rejects.toThrow("Premium amount below minimum for policy type");
   });
 });

@@ -40,23 +40,23 @@ describe("adminService", () => {
   describe("getDashboardStats", () => {
     it("returns correct aggregated stats", async () => {
       // First Promise.all: 10 calls for totals
-      (prisma.user.count as any)
+      vi.mocked(prisma.user.count)
         .mockResolvedValueOnce(100) // totalUsers
         .mockResolvedValueOnce(80); // activeUsers
-      (prisma.policy.count as any)
+      vi.mocked(prisma.policy.count)
         .mockResolvedValueOnce(50) // totalPolicies
         .mockResolvedValueOnce(40); // activePolicies
-      (prisma.claim.count as any)
+      vi.mocked(prisma.claim.count)
         .mockResolvedValueOnce(30) // totalClaims
         .mockResolvedValueOnce(10) // pendingClaims
         .mockResolvedValueOnce(15) // approvedClaims
         .mockResolvedValueOnce(5); // rejectedClaims
-      (prisma.payment.aggregate as any)
-        .mockResolvedValueOnce({ _sum: { amount: 50000 } }) // revenueResult
-        .mockResolvedValueOnce({ _sum: { amount: 5000 } }); // monthlyRevenueResult
-      (prisma.claim.aggregate as any)
-        .mockResolvedValueOnce({ _sum: { amount: 20000 } }) // payoutsResult
-        .mockResolvedValueOnce({ _sum: { amount: 2000 } }); // monthlyPayoutsResult
+      vi.mocked(prisma.payment.aggregate)
+        .mockResolvedValueOnce({ _sum: { amount: 50000 } } as never) // revenueResult
+        .mockResolvedValueOnce({ _sum: { amount: 5000 } } as never); // monthlyRevenueResult
+      vi.mocked(prisma.claim.aggregate)
+        .mockResolvedValueOnce({ _sum: { amount: 20000 } } as never) // payoutsResult
+        .mockResolvedValueOnce({ _sum: { amount: 2000 } } as never); // monthlyPayoutsResult
 
       const stats = await adminService.getDashboardStats();
 
@@ -92,8 +92,8 @@ describe("adminService", () => {
         },
       ];
 
-      (prisma.user.findMany as any).mockResolvedValue(mockUsers);
-      (prisma.user.count as any).mockResolvedValue(1);
+      vi.mocked(prisma.user.findMany).mockResolvedValue(mockUsers as never);
+      vi.mocked(prisma.user.count).mockResolvedValue(1);
 
       const result = await adminService.getUsers({ page: 1, limit: 20 });
 
@@ -114,8 +114,8 @@ describe("adminService", () => {
     });
 
     it("filters by role", async () => {
-      (prisma.user.findMany as any).mockResolvedValue([]);
-      (prisma.user.count as any).mockResolvedValue(0);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
 
       await adminService.getUsers({ role: "admin" });
 
@@ -145,11 +145,11 @@ describe("adminService", () => {
         status: UserStatus.ACTIVE,
       };
 
-      (prisma.user.findUnique as any).mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: "user-1",
         role: UserRole.USER,
-      });
-      (prisma.user.update as any).mockResolvedValue(updatedUser);
+      } as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(updatedUser as never);
 
       const result = await adminService.updateUserRole(
         "user-1",
@@ -172,7 +172,7 @@ describe("adminService", () => {
     });
 
     it("throws if user not found", async () => {
-      (prisma.user.findUnique as any).mockResolvedValue(null);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
       await expect(
         adminService.updateUserRole("missing-user", UserRole.AGENT, "admin-1"),
@@ -200,11 +200,11 @@ describe("adminService", () => {
         status: UserStatus.SUSPENDED,
       };
 
-      (prisma.user.findUnique as any).mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         id: "user-1",
         status: UserStatus.ACTIVE,
-      });
-      (prisma.user.update as any).mockResolvedValue(updatedUser);
+      } as never);
+      vi.mocked(prisma.user.update).mockResolvedValue(updatedUser as never);
 
       const result = await adminService.updateUserStatus(
         "user-1",
@@ -227,7 +227,7 @@ describe("adminService", () => {
     });
 
     it("throws if user not found", async () => {
-      (prisma.user.findUnique as any).mockResolvedValue(null);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
       await expect(
         adminService.updateUserStatus(

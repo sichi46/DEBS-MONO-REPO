@@ -51,8 +51,8 @@ export interface PolicyDetails extends Policy {
   beneficiaries: Beneficiary[];
   paymentFrequency: string;
   paymentHistory: PaymentRecord[];
-  claims?: any[]; // Define properly if needed later
-  payments?: any[]; // Define properly if needed later
+  claims?: unknown[];
+  payments?: unknown[];
 }
 
 export interface CreatePolicyData {

@@ -122,7 +122,7 @@ export function AdminClaimsPage() {
           toast.success(
             `Claim ${status === "APPROVED" ? "approved" : "rejected"}`,
           ),
-        onError: (err: any) =>
+        onError: (err: Error) =>
           toast.error(err.message || "Failed to update claim"),
       },
     );

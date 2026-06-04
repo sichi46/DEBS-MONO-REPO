@@ -98,7 +98,7 @@ export function UsersPage() {
       { id: userId, status },
       {
         onSuccess: () => toast.success("User status updated"),
-        onError: (err: any) =>
+        onError: (err: Error) =>
           toast.error(err.message || "Failed to update status"),
       },
     );

@@ -7,4 +7,12 @@ module.exports = {
     tsconfigRootDir: __dirname,
   },
   ignorePatterns: ["dist", "node_modules", "vite.config.ts", "src/main.tsx", "e2e/", "playwright.config.ts"],
+  overrides: [
+    {
+      files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+      rules: {
+        "@typescript-eslint/no-explicit-any": "off",
+      },
+    },
+  ],
 };

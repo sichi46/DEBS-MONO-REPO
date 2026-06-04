@@ -12,7 +12,15 @@ export const policiesApi = {
     status?: string;
   }): Promise<Policy[]> => {
     const { data } = await api.get<
-      ApiResponse<{ policies: Policy[]; pagination: any }>
+      ApiResponse<{
+        policies: Policy[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        };
+      }>
     >("/policies", { params });
     return data.data.policies;
   },
