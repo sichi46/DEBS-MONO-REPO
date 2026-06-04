@@ -12,5 +12,11 @@
       "src": "/(.*)",
       "dest": "api/index.ts"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/lenco-reconcile",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }

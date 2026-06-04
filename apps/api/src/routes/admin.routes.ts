@@ -27,4 +27,7 @@ router.patch("/claims/:id/status", adminController.updateClaimStatus);
 // Payments
 router.get("/payments", adminController.getPayments);
 
+// Lenco reconciliation (manual trigger)
+router.post("/lenco/reconcile", adminController.reconcileLencoTransfers);
+
 export default router;

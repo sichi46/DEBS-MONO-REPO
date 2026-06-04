@@ -275,6 +275,75 @@ export const lencoService = {
     }
   },
 
+  // ─── Reconciliation ──────────────────────────────────────────────────
+
+  async reconcileStuckTransfers(options?: {
+    olderThanMinutes?: number;
+    batchSize?: number;
+  }) {
+    const olderThanMinutes = options?.olderThanMinutes ?? 15;
+    const batchSize = options?.batchSize ?? 50;
+    const cutoff = new Date(Date.now() - olderThanMinutes * 60_000);
+
+    const stuck = await prisma.lencoTransfer.findMany({
+      where: {
+        status: { in: ["PENDING", "PROCESSING"] },
+        updatedAt: { lt: cutoff },
+      },
+      select: { reference: true, status: true },
+      take: batchSize,
+      orderBy: { updatedAt: "asc" },
+    });
+
+    let updated = 0;
+    let failed = 0;
+    let unchanged = 0;
+
+    const statusMap: Record<string, string> = {
+      pending: "PENDING",
+      processing: "PROCESSING",
+      successful: "SUCCESSFUL",
+      failed: "FAILED",
+      reversed: "REVERSED",
+    };
+
+    for (const transfer of stuck) {
+      // getTransferStatus never throws — it returns { lenco: null } on API error.
+      const { lenco } = await lencoService.getTransferStatus(
+        transfer.reference,
+      );
+      if (!lenco) {
+        failed++;
+        console.error(
+          `[reconcile] ${transfer.reference}: Lenco API unreachable`,
+        );
+        continue;
+      }
+      const lencoStatus = (lenco as { status?: string }).status?.toLowerCase();
+      const resolvedStatus = lencoStatus
+        ? (statusMap[lencoStatus] ?? null)
+        : null;
+      if (resolvedStatus && resolvedStatus !== transfer.status) {
+        updated++;
+        console.log(
+          `[reconcile] ${transfer.reference}: ${transfer.status} → ${resolvedStatus}`,
+        );
+      } else {
+        unchanged++;
+      }
+    }
+
+    const summary = {
+      checked: stuck.length,
+      updated,
+      unchanged,
+      failed,
+      olderThanMinutes,
+    };
+    console.log(`[reconcile] complete —`, summary);
+    return summary;
+  },
+
   // ─── Webhooks ────────────────────────────────────────────────────────
 
   async processWebhookEvent(
@@ -318,40 +387,120 @@ export const lencoService = {
       },
     });
 
-    // ── transaction.debit — Lenco fires this when an outbound bank transfer
-    // completes. The payload has no reference field; the Lenco reference is
-    // appended to the narration as "<our narration> / <lencoRef>".
-    if (eventType === "transaction.debit") {
-      const narration = payload.narration as string | undefined;
-      const lencoRef = narration?.split(" / ").at(-1)?.trim();
+    try {
+      // ── transaction.debit — Lenco fires this when an outbound bank transfer
+      // completes. The payload has no reference field; the Lenco reference is
+      // appended to the narration as "<our narration> / <lencoRef>".
+      if (eventType === "transaction.debit") {
+        const narration = payload.narration as string | undefined;
+        const lencoRef = narration?.split(" / ").at(-1)?.trim();
 
-      if (lencoRef) {
-        // Find the transfer regardless of current status — polling may have
-        // already marked it SUCCESSFUL but the claim may still be unpaid.
-        const transfer = await prisma.lencoTransfer.findFirst({
-          where: {
-            lencoResponse: { path: ["lencoReference"], equals: lencoRef },
-          },
-          select: { id: true, claimId: true, status: true },
-        });
+        if (lencoRef) {
+          // Find the transfer regardless of current status — polling may have
+          // already marked it SUCCESSFUL but the claim may still be unpaid.
+          const transfer = await prisma.lencoTransfer.findFirst({
+            where: {
+              lencoResponse: { path: ["lencoReference"], equals: lencoRef },
+            },
+            select: { id: true, claimId: true, status: true },
+          });
 
-        if (transfer) {
+          if (transfer) {
+            await prisma.$transaction(async (tx) => {
+              // Only update transfer if not already in a terminal state
+              if (
+                !["SUCCESSFUL", "FAILED", "REVERSED"].includes(transfer.status)
+              ) {
+                await tx.lencoTransfer.update({
+                  where: { id: transfer.id },
+                  data: { status: "SUCCESSFUL" },
+                });
+              }
+              // Always update the linked claim — polling syncs transfer status
+              // but never updates payoutStatus; this webhook is the authoritative
+              // signal that the payout completed.
+              if (transfer.claimId) {
+                await tx.claim.update({
+                  where: { id: transfer.claimId },
+                  data: {
+                    payoutStatus: "PAID",
+                    payoutCompletedAt: new Date(),
+                  },
+                });
+              }
+            });
+          }
+        }
+      } else if (eventType === "transaction.credit") {
+        // Lenco fires this when money arrives in the merchant account.
+        // collection.successful handles the business logic for mobile money;
+        // this is an account-level notification only — no additional action.
+      } else if (eventType === "transaction.reversed") {
+        // Lenco fires this when an outbound bank transfer is reversed.
+        // The narration format matches transaction.debit: "<narration> / <lencoRef>".
+        const narration = payload.narration as string | undefined;
+        const lencoRef = narration?.split(" / ").at(-1)?.trim();
+
+        if (lencoRef) {
+          const transfer = await prisma.lencoTransfer.findFirst({
+            where: {
+              lencoResponse: { path: ["lencoReference"], equals: lencoRef },
+            },
+            select: { id: true, claimId: true, status: true },
+          });
+
+          if (transfer) {
+            await prisma.$transaction(async (tx) => {
+              if (transfer.status !== "REVERSED") {
+                await tx.lencoTransfer.update({
+                  where: { id: transfer.id },
+                  data: { status: "REVERSED" },
+                });
+              }
+              // Always update the claim regardless of prior transfer state — the
+              // reversal signal means money came back regardless of what status
+              // the transfer record currently shows.
+              if (transfer.claimId) {
+                await tx.claim.update({
+                  where: { id: transfer.claimId },
+                  data: { payoutStatus: "FAILED" },
+                });
+              }
+            });
+          }
+        }
+      } else if (reference) {
+        // Reference-based events (collection and legacy transfer events)
+        if (eventType === "transfer.successful") {
+          // Fetch and update only non-terminal transfers inside the transaction so
+          // the status guard and the write are atomic — prevents a delayed
+          // transfer.successful from overwriting FAILED or REVERSED.
           await prisma.$transaction(async (tx) => {
-            // Only update transfer if not already in a terminal state
-            if (
-              !["SUCCESSFUL", "FAILED", "REVERSED"].includes(transfer.status)
-            ) {
-              await tx.lencoTransfer.update({
-                where: { id: transfer.id },
-                data: { status: "SUCCESSFUL" },
-              });
-            }
-            // Always update the linked claim — polling syncs transfer status
-            // but never updates payoutStatus; this webhook is the authoritative
-            // signal that the payout completed.
-            if (transfer.claimId) {
-              await tx.claim.update({
-                where: { id: transfer.claimId },
+            const updatable = await tx.lencoTransfer.findMany({
+              where: {
+                reference,
+                status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
+              },
+              select: { claimId: true },
+            });
+
+            if (updatable.length === 0) return;
+
+            const claimIds = updatable
+              .map((t) => t.claimId)
+              .filter((id): id is string => id !== null && id !== undefined);
+
+            await tx.lencoTransfer.updateMany({
+              where: {
+                reference,
+                status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
+              },
+              data: { status: "SUCCESSFUL" },
+            });
+
+            if (claimIds.length > 0) {
+              await tx.claim.updateMany({
+                where: { id: { in: claimIds } },
                 data: {
                   payoutStatus: "PAID",
                   payoutCompletedAt: new Date(),
@@ -359,204 +508,139 @@ export const lencoService = {
               });
             }
           });
-        }
-      }
-    } else if (eventType === "transaction.credit") {
-      // Lenco fires this when money arrives in the merchant account.
-      // collection.successful handles the business logic for mobile money;
-      // this is an account-level notification only — no additional action.
-    } else if (eventType === "transaction.reversed") {
-      // Lenco fires this when an outbound bank transfer is reversed.
-      // The narration format matches transaction.debit: "<narration> / <lencoRef>".
-      const narration = payload.narration as string | undefined;
-      const lencoRef = narration?.split(" / ").at(-1)?.trim();
-
-      if (lencoRef) {
-        const transfer = await prisma.lencoTransfer.findFirst({
-          where: {
-            lencoResponse: { path: ["lencoReference"], equals: lencoRef },
-          },
-          select: { id: true, claimId: true, status: true },
-        });
-
-        if (transfer) {
+        } else if (eventType === "transfer.failed") {
+          // Same atomic guard: a delayed transfer.failed must not overwrite a
+          // transfer already confirmed as SUCCESSFUL or REVERSED.
           await prisma.$transaction(async (tx) => {
-            if (transfer.status !== "REVERSED") {
-              await tx.lencoTransfer.update({
-                where: { id: transfer.id },
-                data: { status: "REVERSED" },
-              });
-            }
-            // Always update the claim regardless of prior transfer state — the
-            // reversal signal means money came back regardless of what status
-            // the transfer record currently shows.
-            if (transfer.claimId) {
-              await tx.claim.update({
-                where: { id: transfer.claimId },
+            const updatable = await tx.lencoTransfer.findMany({
+              where: {
+                reference,
+                status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
+              },
+              select: { claimId: true },
+            });
+
+            if (updatable.length === 0) return;
+
+            const claimIds = updatable
+              .map((t) => t.claimId)
+              .filter((id): id is string => id !== null && id !== undefined);
+
+            await tx.lencoTransfer.updateMany({
+              where: {
+                reference,
+                status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
+              },
+              data: {
+                status: "FAILED",
+                failureReason: (payload.reason as string) ?? "Transfer failed",
+              },
+            });
+
+            if (claimIds.length > 0) {
+              await tx.claim.updateMany({
+                where: { id: { in: claimIds } },
                 data: { payoutStatus: "FAILED" },
               });
             }
           });
-        }
-      }
-    } else if (reference) {
-      // Reference-based events (collection and legacy transfer events)
-      if (eventType === "transfer.successful") {
-        // Fetch and update only non-terminal transfers inside the transaction so
-        // the status guard and the write are atomic — prevents a delayed
-        // transfer.successful from overwriting FAILED or REVERSED.
-        await prisma.$transaction(async (tx) => {
-          const updatable = await tx.lencoTransfer.findMany({
-            where: {
-              reference,
-              status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
-            },
-            select: { claimId: true },
+        } else if (eventType === "transfer.reversed") {
+          // A reversal is a legitimate financial event that can move a SUCCESSFUL
+          // transfer to REVERSED (bank returned funds). Guard only against
+          // re-processing an already-REVERSED transfer.
+          await prisma.$transaction(async (tx) => {
+            const updatable = await tx.lencoTransfer.findMany({
+              where: { reference, status: { not: "REVERSED" } },
+              select: { claimId: true },
+            });
+
+            if (updatable.length === 0) return;
+
+            const claimIds = updatable
+              .map((t) => t.claimId)
+              .filter((id): id is string => id !== null && id !== undefined);
+
+            await tx.lencoTransfer.updateMany({
+              where: { reference, status: { not: "REVERSED" } },
+              data: { status: "REVERSED" },
+            });
+
+            if (claimIds.length > 0) {
+              await tx.claim.updateMany({
+                where: { id: { in: claimIds } },
+                data: { payoutStatus: "FAILED" },
+              });
+            }
           });
-
-          if (updatable.length === 0) return;
-
-          const claimIds = updatable
-            .map((t) => t.claimId)
-            .filter((id): id is string => id !== null && id !== undefined);
-
-          await tx.lencoTransfer.updateMany({
-            where: {
-              reference,
-              status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
-            },
-            data: { status: "SUCCESSFUL" },
+        } else if (eventType === "collection.successful") {
+          const collection = await prisma.lencoCollection.findUnique({
+            where: { reference },
           });
-
-          if (claimIds.length > 0) {
-            await tx.claim.updateMany({
-              where: { id: { in: claimIds } },
+          if (collection) {
+            await prisma.lencoCollection.update({
+              where: { reference },
+              data: { status: "SUCCESSFUL" },
+            });
+            if (collection.paymentId) {
+              await prisma.payment.update({
+                where: { id: collection.paymentId },
+                data: { status: "PAID", paidAt: new Date() },
+              });
+            }
+          }
+        } else if (eventType === "collection.failed") {
+          const collection = await prisma.lencoCollection.findUnique({
+            where: { reference },
+          });
+          if (collection) {
+            await prisma.lencoCollection.update({
+              where: { reference },
               data: {
-                payoutStatus: "PAID",
-                payoutCompletedAt: new Date(),
+                status: "FAILED",
+                failureReason:
+                  (payload.reason as string) ?? "Collection failed",
               },
             });
+            if (collection.paymentId) {
+              await prisma.payment.update({
+                where: { id: collection.paymentId },
+                data: { status: "FAILED" },
+              });
+            }
           }
-        });
-      } else if (eventType === "transfer.failed") {
-        // Same atomic guard: a delayed transfer.failed must not overwrite a
-        // transfer already confirmed as SUCCESSFUL or REVERSED.
-        await prisma.$transaction(async (tx) => {
-          const updatable = await tx.lencoTransfer.findMany({
-            where: {
-              reference,
-              status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
-            },
-            select: { claimId: true },
-          });
-
-          if (updatable.length === 0) return;
-
-          const claimIds = updatable
-            .map((t) => t.claimId)
-            .filter((id): id is string => id !== null && id !== undefined);
-
-          await tx.lencoTransfer.updateMany({
-            where: {
-              reference,
-              status: { notIn: [...TERMINAL_TRANSFER_STATUSES] },
-            },
-            data: {
-              status: "FAILED",
-              failureReason: (payload.reason as string) ?? "Transfer failed",
-            },
-          });
-
-          if (claimIds.length > 0) {
-            await tx.claim.updateMany({
-              where: { id: { in: claimIds } },
-              data: { payoutStatus: "FAILED" },
-            });
-          }
-        });
-      } else if (eventType === "transfer.reversed") {
-        // A reversal is a legitimate financial event that can move a SUCCESSFUL
-        // transfer to REVERSED (bank returned funds). Guard only against
-        // re-processing an already-REVERSED transfer.
-        await prisma.$transaction(async (tx) => {
-          const updatable = await tx.lencoTransfer.findMany({
-            where: { reference, status: { not: "REVERSED" } },
-            select: { claimId: true },
-          });
-
-          if (updatable.length === 0) return;
-
-          const claimIds = updatable
-            .map((t) => t.claimId)
-            .filter((id): id is string => id !== null && id !== undefined);
-
-          await tx.lencoTransfer.updateMany({
-            where: { reference, status: { not: "REVERSED" } },
-            data: { status: "REVERSED" },
-          });
-
-          if (claimIds.length > 0) {
-            await tx.claim.updateMany({
-              where: { id: { in: claimIds } },
-              data: { payoutStatus: "FAILED" },
-            });
-          }
-        });
-      } else if (eventType === "collection.successful") {
-        const collection = await prisma.lencoCollection.findUnique({
-          where: { reference },
-        });
-        if (collection) {
-          await prisma.lencoCollection.update({
+        } else if (eventType === "collection.pay_offline") {
+          // Provider redirected to offline payment — customer must pay via cash/bank
+          // agent. The collection is not yet settled; payment stays PENDING.
+          const collection = await prisma.lencoCollection.findUnique({
             where: { reference },
-            data: { status: "SUCCESSFUL" },
           });
-          if (collection.paymentId) {
-            await prisma.payment.update({
-              where: { id: collection.paymentId },
-              data: { status: "PAID", paidAt: new Date() },
+          if (collection && collection.status === "PENDING") {
+            await prisma.lencoCollection.update({
+              where: { reference },
+              data: { status: "PAY_OFFLINE" },
             });
           }
-        }
-      } else if (eventType === "collection.failed") {
-        const collection = await prisma.lencoCollection.findUnique({
-          where: { reference },
-        });
-        if (collection) {
-          await prisma.lencoCollection.update({
-            where: { reference },
-            data: {
-              status: "FAILED",
-              failureReason: (payload.reason as string) ?? "Collection failed",
-            },
-          });
-          if (collection.paymentId) {
-            await prisma.payment.update({
-              where: { id: collection.paymentId },
-              data: { status: "FAILED" },
-            });
-          }
-        }
-      } else if (eventType === "collection.pay_offline") {
-        // Provider redirected to offline payment — customer must pay via cash/bank
-        // agent. The collection is not yet settled; payment stays PENDING.
-        const collection = await prisma.lencoCollection.findUnique({
-          where: { reference },
-        });
-        if (collection && collection.status === "PENDING") {
-          await prisma.lencoCollection.update({
-            where: { reference },
-            data: { status: "PAY_OFFLINE" },
-          });
         }
       }
-    }
 
-    // Mark event as processed for all event types
-    await prisma.lencoWebhookEvent.update({
-      where: { id: event.id },
-      data: { processed: true, processedAt: new Date() },
-    });
+      // Mark event as processed for all event types
+      await prisma.lencoWebhookEvent.update({
+        where: { id: event.id },
+        data: { processed: true, processedAt: new Date() },
+      });
+    } catch (err) {
+      // Persist the error so the failed event is auditable and distinguishable
+      // from unprocessed events (processed: false, processingError: <message>).
+      const message =
+        err instanceof Error ? err.message : "Unknown processing error";
+      await prisma.lencoWebhookEvent
+        .update({
+          where: { id: event.id },
+          data: { processingError: message },
+        })
+        .catch(() => {}); // best-effort — don't mask the original error
+      throw err;
+    }
 
     return event;
   },

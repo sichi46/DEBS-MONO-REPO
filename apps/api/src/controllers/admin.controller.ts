@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { z } from "zod";
 import { adminService } from "../services/admin.service.js";
+import { lencoService } from "../services/lenco.service.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 import { AuthenticatedRequest } from "../types/index.js";
 
@@ -193,6 +194,26 @@ export const adminController = {
     } catch (error: unknown) {
       console.error("Get admin payments error:", error);
       sendError(res, getErrorMessage(error, "Failed to fetch payments"), 500);
+    }
+  },
+
+  async reconcileLencoTransfers(req: AuthenticatedRequest, res: Response) {
+    try {
+      const olderThanMinutes = req.query.olderThanMinutes
+        ? parseInt(req.query.olderThanMinutes as string, 10)
+        : undefined;
+      const batchSize = req.query.batchSize
+        ? parseInt(req.query.batchSize as string, 10)
+        : undefined;
+
+      const result = await lencoService.reconcileStuckTransfers({
+        olderThanMinutes,
+        batchSize,
+      });
+      sendSuccess(res, result, "Reconciliation complete");
+    } catch (error: unknown) {
+      console.error("Lenco reconcile error:", error);
+      sendError(res, getErrorMessage(error, "Reconciliation failed"), 500);
     }
   },
 };

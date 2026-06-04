@@ -1,6 +1,7 @@
 import express, { type IRouter } from "express";
 import fs from "fs";
 import path from "path";
+import { authenticate, requireAdmin } from "../middleware/auth.js";
 
 // In CJS (NodeNext without "type":"module"), __dirname is available natively.
 // The routes folder is src/routes/, so two levels up reaches apps/api/.
@@ -10,6 +11,8 @@ const router: IRouter = express.Router();
 
 router.post(
   "/webhooks/capture",
+  authenticate,
+  requireAdmin,
   express.raw({ type: "*/*", limit: "1mb" }),
   (req, res) => {
     const rawBody = (req.body as Buffer).toString("utf-8");

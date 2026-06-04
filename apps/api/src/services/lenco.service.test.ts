@@ -69,17 +69,15 @@ import { prisma } from "../lib/prisma";
 import { lencoClient } from "../lib/lenco";
 import { lencoService } from "./lenco.service";
 
-const mockPrisma = vi.mocked(prisma);
-const mockLenco = vi.mocked(lencoClient);
+const mockPrisma = prisma as any;
+const mockLenco = lencoClient as any;
 
 describe("lencoService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Make $transaction pass mockPrisma as the tx proxy so inner calls
     // hit the same mocks as outer prisma calls
-    mockPrisma.$transaction.mockImplementation(
-      (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma),
-    );
+    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockPrisma));
   });
 
   describe("getAccounts", () => {
@@ -1185,6 +1183,153 @@ describe("lencoService", () => {
       expect(mockPrisma.payment.create).toHaveBeenCalledOnce();
       expect(mockPrisma.lencoCollection.create).toHaveBeenCalledOnce();
       expect(mockLenco.initiateMobileMoneyCollection).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ── processingError support ──────────────────────────────────────────
+
+  describe("processWebhookEvent — processingError", () => {
+    it("should write processingError and leave processed=false when business logic throws", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-err-1",
+        eventType: "transfer.successful",
+      });
+      // findMany inside the transaction throws to simulate a DB error
+      mockPrisma.lencoTransfer.findMany.mockRejectedValueOnce(
+        new Error("DB connection lost"),
+      );
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await expect(
+        lencoService.processWebhookEvent("transfer.successful", {
+          reference: "DEBS-ERR",
+        }),
+      ).rejects.toThrow("DB connection lost");
+
+      // processingError update was called; processed NOT set to true
+      expect(mockPrisma.lencoWebhookEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "evt-err-1" },
+          data: { processingError: "DB connection lost" },
+        }),
+      );
+      // The successful-processing update (processed: true) must NOT have fired
+      expect(mockPrisma.lencoWebhookEvent.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ processed: true }),
+        }),
+      );
+    });
+
+    it("should mark processed=true and not touch processingError on success", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-ok-1",
+        eventType: "transfer.successful",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.successful", {
+        reference: "DEBS-OK",
+      });
+
+      expect(mockPrisma.lencoWebhookEvent.update).toHaveBeenCalledWith({
+        where: { id: "evt-ok-1" },
+        data: { processed: true, processedAt: expect.any(Date) },
+      });
+    });
+  });
+
+  // ── Reconciliation ───────────────────────────────────────────────────
+
+  describe("reconcileStuckTransfers", () => {
+    it("should query transfers older than threshold and update changed ones", async () => {
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { reference: "DEBS-STUCK-1", status: "PROCESSING" },
+        { reference: "DEBS-STUCK-2", status: "PENDING" },
+      ]);
+      // First transfer: Lenco says successful — status changes
+      mockPrisma.lencoTransfer.findUnique
+        .mockResolvedValueOnce({
+          id: "t-s1",
+          reference: "DEBS-STUCK-1",
+          status: "PROCESSING",
+          recipient: {},
+          claim: null,
+        })
+        .mockResolvedValueOnce({
+          id: "t-s2",
+          reference: "DEBS-STUCK-2",
+          status: "PENDING",
+          recipient: {},
+          claim: null,
+        });
+      mockLenco.getTransferStatus
+        .mockResolvedValueOnce({ status: true, data: { status: "successful" } })
+        .mockResolvedValueOnce({ status: true, data: { status: "pending" } });
+      mockPrisma.lencoTransfer.update.mockResolvedValueOnce({});
+
+      const result = await lencoService.reconcileStuckTransfers({
+        olderThanMinutes: 15,
+      });
+
+      expect(result.checked).toBe(2);
+      expect(result.updated).toBe(1); // DEBS-STUCK-1 changed
+      expect(result.unchanged).toBe(1); // DEBS-STUCK-2 still pending
+      expect(result.failed).toBe(0);
+    });
+
+    it("should count Lenco API errors as failed without throwing", async () => {
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { reference: "DEBS-API-ERR", status: "PROCESSING" },
+      ]);
+      mockPrisma.lencoTransfer.findUnique.mockResolvedValueOnce({
+        id: "t-err",
+        reference: "DEBS-API-ERR",
+        status: "PROCESSING",
+        recipient: {},
+        claim: null,
+      });
+      mockLenco.getTransferStatus.mockRejectedValueOnce(
+        new Error("Lenco API timeout"),
+      );
+
+      const result = await lencoService.reconcileStuckTransfers();
+
+      expect(result.checked).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.updated).toBe(0);
+    });
+
+    it("should return zero counts when no stuck transfers exist", async () => {
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+
+      const result = await lencoService.reconcileStuckTransfers();
+
+      expect(result.checked).toBe(0);
+      expect(result.updated).toBe(0);
+      expect(result.failed).toBe(0);
+      expect(mockLenco.getTransferStatus).not.toHaveBeenCalled();
+    });
+
+    it("should query with correct cutoff and batch size", async () => {
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+
+      await lencoService.reconcileStuckTransfers({
+        olderThanMinutes: 30,
+        batchSize: 10,
+      });
+
+      expect(mockPrisma.lencoTransfer.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: ["PENDING", "PROCESSING"] },
+          }),
+          take: 10,
+        }),
+      );
     });
   });
 });
