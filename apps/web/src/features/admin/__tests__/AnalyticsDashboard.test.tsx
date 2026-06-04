@@ -1,15 +1,24 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 // Mock recharts to avoid rendering issues in jsdom
 vi.mock("recharts", () => ({
-  ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
-  AreaChart: ({ children }: any) => <div>{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AreaChart: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   Area: () => null,
-  BarChart: ({ children }: any) => <div>{children}</div>,
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   Bar: () => null,
-  PieChart: ({ children }: any) => <div>{children}</div>,
-  Pie: ({ children }: any) => <div>{children}</div>,
+  PieChart: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  Pie: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Cell: () => null,
   XAxis: () => null,
   YAxis: () => null,
@@ -54,17 +63,19 @@ function setDefaultMocks(overrides?: {
   monthlyLoading?: boolean;
   distLoading?: boolean;
   stats?: typeof mockStats | undefined;
-  policyDistribution?: any[] | undefined;
+  policyDistribution?:
+    | Array<{ type: string; count: number; percentage: number; color: string }>
+    | undefined;
 }) {
   mockUseAdminStats.mockReturnValue({
     data: overrides?.stats !== undefined ? overrides.stats : mockStats,
     isLoading: overrides?.statsLoading ?? false,
-  } as any);
+  } as never);
 
   mockUseMonthlyData.mockReturnValue({
     data: [],
     isLoading: overrides?.monthlyLoading ?? false,
-  } as any);
+  } as never);
 
   mockUsePolicyDistribution.mockReturnValue({
     data:
@@ -72,7 +83,7 @@ function setDefaultMocks(overrides?: {
         ? overrides.policyDistribution
         : [],
     isLoading: overrides?.distLoading ?? false,
-  } as any);
+  } as never);
 }
 
 describe("AnalyticsDashboard", () => {

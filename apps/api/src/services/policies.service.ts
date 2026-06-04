@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, PolicyStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 // Types
@@ -35,7 +35,7 @@ export const policiesService = {
 
     const where: Prisma.PolicyWhereInput = {
       userId,
-      ...(status && { status: status as any }),
+      ...(status && { status: status as PolicyStatus }),
       ...(type && { policyTypeId: type }),
     };
 

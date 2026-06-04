@@ -69,15 +69,17 @@ import { prisma } from "../lib/prisma";
 import { lencoClient } from "../lib/lenco";
 import { lencoService } from "./lenco.service";
 
-const mockPrisma = prisma as any;
-const mockLenco = lencoClient as any;
+const mockPrisma = vi.mocked(prisma);
+const mockLenco = vi.mocked(lencoClient);
 
 describe("lencoService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Make $transaction pass mockPrisma as the tx proxy so inner calls
     // hit the same mocks as outer prisma calls
-    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockPrisma));
+    mockPrisma.$transaction.mockImplementation(
+      (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma),
+    );
   });
 
   describe("getAccounts", () => {
@@ -1001,7 +1003,7 @@ describe("lencoService", () => {
           idempotencyKey: "transfer.successful:DEBS-NEW",
         }),
       });
-      expect((result as any).id).toBe("evt-new");
+      expect((result as { id: string }).id).toBe("evt-new");
     });
 
     it("should process webhook without idempotency key when neither id nor reference is present", async () => {
@@ -1021,7 +1023,7 @@ describe("lencoService", () => {
           idempotencyKey: expect.anything(),
         }),
       });
-      expect((result as any).id).toBe("evt-noidp");
+      expect((result as { id: string }).id).toBe("evt-noidp");
     });
   });
 

@@ -60,10 +60,8 @@ export function PaymentsOverviewPage() {
 
   const payments = data?.payments || [];
   const total = data?.pagination?.total ?? 0;
-  const paidCount = payments.filter((p: any) => p.status === "Paid").length;
-  const pendingCount = payments.filter(
-    (p: any) => p.status === "Pending",
-  ).length;
+  const paidCount = payments.filter((p) => p.status === "Paid").length;
+  const pendingCount = payments.filter((p) => p.status === "Pending").length;
 
   const handleExport = () => {
     if (!payments.length) return;
@@ -76,7 +74,7 @@ export function PaymentsOverviewPage() {
       "Status",
       "Method",
     ];
-    const rows = payments.map((p: any) => [
+    const rows = payments.map((p) => [
       p.date,
       p.userName,
       p.policyNumber,
@@ -241,7 +239,7 @@ export function PaymentsOverviewPage() {
                   </TableHeader>
                   <TableBody>
                     {payments.length > 0 ? (
-                      payments.map((payment: any) => (
+                      payments.map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell>{payment.date}</TableCell>
                           <TableCell className="hidden md:table-cell">

@@ -89,7 +89,7 @@ export function AdminClaimsPage() {
       "Amount",
       "Status",
     ];
-    const rows = claims.map((c: any) => [
+    const rows = claims.map((c) => [
       c.claimId,
       c.userName,
       c.userEmail,
@@ -122,7 +122,7 @@ export function AdminClaimsPage() {
           toast.success(
             `Claim ${status === "APPROVED" ? "approved" : "rejected"}`,
           ),
-        onError: (err: any) =>
+        onError: (err: Error) =>
           toast.error(err.message || "Failed to update claim"),
       },
     );
@@ -272,7 +272,7 @@ export function AdminClaimsPage() {
                   </TableHeader>
                   <TableBody>
                     {claims.length > 0 ? (
-                      claims.map((claim: any) => (
+                      claims.map((claim) => (
                         <TableRow key={claim.claimId}>
                           <TableCell className="font-medium">
                             {claim.claimId}

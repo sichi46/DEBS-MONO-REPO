@@ -87,10 +87,10 @@ export function UsersPage() {
 
   const users = data?.users || [];
   const totalUsers = data?.pagination?.total ?? 0;
-  const activeUsers = users.filter((u: any) => u.status === "active").length;
-  const customers = users.filter((u: any) => u.role === "user").length;
+  const activeUsers = users.filter((u) => u.status === "active").length;
+  const customers = users.filter((u) => u.role === "user").length;
   const admins = users.filter(
-    (u: any) => u.role === "admin" || u.role === "agent",
+    (u) => u.role === "admin" || u.role === "agent",
   ).length;
 
   const handleStatusUpdate = (userId: string, status: string) => {
@@ -98,7 +98,7 @@ export function UsersPage() {
       { id: userId, status },
       {
         onSuccess: () => toast.success("User status updated"),
-        onError: (err: any) =>
+        onError: (err: Error) =>
           toast.error(err.message || "Failed to update status"),
       },
     );
@@ -243,7 +243,7 @@ export function UsersPage() {
                   </TableHeader>
                   <TableBody>
                     {users.length > 0 ? (
-                      users.map((user: any) => (
+                      users.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell>
                             <div className="flex items-center gap-3">

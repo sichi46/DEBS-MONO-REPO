@@ -1,4 +1,11 @@
-import { Prisma, UserRole, UserStatus, ClaimStatus } from "@prisma/client";
+import {
+  Prisma,
+  UserRole,
+  UserStatus,
+  ClaimStatus,
+  PolicyStatus,
+  PaymentStatus,
+} from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 const POLICY_TYPE_COLORS: Record<string, string> = {
@@ -287,7 +294,7 @@ export const adminService = {
 
     const where: Prisma.PolicyWhereInput = {
       ...(status &&
-        status !== "all" && { status: status.toUpperCase() as any }),
+        status !== "all" && { status: status.toUpperCase() as PolicyStatus }),
       ...(search && {
         OR: [
           { policyNumber: { contains: search, mode: "insensitive" } },
@@ -354,7 +361,7 @@ export const adminService = {
     const where: Prisma.ClaimWhereInput = {
       ...(status &&
         status !== "all" && {
-          status: status.toUpperCase().replace(" ", "_") as any,
+          status: status.toUpperCase().replace(" ", "_") as ClaimStatus,
         }),
       ...(search && {
         OR: [
@@ -448,7 +455,7 @@ export const adminService = {
 
     const where: Prisma.PaymentWhereInput = {
       ...(status &&
-        status !== "all" && { status: status.toUpperCase() as any }),
+        status !== "all" && { status: status.toUpperCase() as PaymentStatus }),
       ...(search && {
         OR: [
           {
