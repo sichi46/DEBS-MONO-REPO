@@ -41,8 +41,13 @@ if (config.nodeEnv !== "test") {
   app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
 }
 
-// Raw body capture for Lenco webhook HMAC verification (must precede express.json)
-app.use("/api/lenco/webhooks", express.raw({ type: "application/json" }));
+// Raw body capture for Lenco webhook HMAC verification (must precede express.json).
+// 64 KB is well above any realistic Lenco payload and prevents abuse of the
+// public endpoint before signature verification runs.
+app.use(
+  "/api/lenco/webhooks",
+  express.raw({ type: "application/json", limit: "64kb" }),
+);
 
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
