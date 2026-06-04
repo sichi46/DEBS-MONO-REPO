@@ -264,7 +264,7 @@ export function AnalyticsDashboard() {
                         paddingAngle={2}
                         dataKey="count"
                       >
-                        {policyDistribution.map((entry, index) => (
+                        {policyDistribution.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -272,9 +272,7 @@ export function AnalyticsDashboard() {
                         formatter={(
                           value: number,
                           _name: string,
-                          props: {
-                            payload: { percentage: number; type: string };
-                          },
+                          props: any,
                         ) => [
                           `${value} policies (${props.payload.percentage}%)`,
                           props.payload.type,
@@ -289,7 +287,7 @@ export function AnalyticsDashboard() {
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-4 space-y-2">
-                  {policyDistribution.map((item) => (
+                  {policyDistribution.map((item: any) => (
                     <div
                       key={item.type}
                       className="flex items-center justify-between text-sm"

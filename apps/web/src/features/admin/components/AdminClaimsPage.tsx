@@ -89,7 +89,7 @@ export function AdminClaimsPage() {
       "Amount",
       "Status",
     ];
-    const rows = claims.map((c) => [
+    const rows = claims.map((c: any) => [
       c.claimId,
       c.userName,
       c.userEmail,
@@ -272,7 +272,7 @@ export function AdminClaimsPage() {
                   </TableHeader>
                   <TableBody>
                     {claims.length > 0 ? (
-                      claims.map((claim) => (
+                      claims.map((claim: any) => (
                         <TableRow key={claim.claimId}>
                           <TableCell className="font-medium">
                             {claim.claimId}

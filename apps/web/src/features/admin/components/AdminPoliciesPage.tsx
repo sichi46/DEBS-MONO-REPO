@@ -81,7 +81,7 @@ export function AdminPoliciesPage() {
       "Premium",
       "Status",
     ];
-    const rows = policies.map((p) => [
+    const rows = policies.map((p: any) => [
       p.policyNumber,
       p.userName,
       p.userEmail,
@@ -229,7 +229,7 @@ export function AdminPoliciesPage() {
                   </TableHeader>
                   <TableBody>
                     {policies.length > 0 ? (
-                      policies.map((policy) => (
+                      policies.map((policy: any) => (
                         <TableRow key={policy.policyNumber}>
                           <TableCell className="font-medium">
                             {policy.policyNumber}
