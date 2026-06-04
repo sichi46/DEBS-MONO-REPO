@@ -452,7 +452,10 @@ describe("lencoService", () => {
         id: "evt-1",
         eventType: "transfer.successful",
       });
-      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      // findMany is now called inside the transaction to find non-terminal transfers
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: null },
+      ]);
       mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
 
@@ -465,7 +468,10 @@ describe("lencoService", () => {
         "transfer.successful",
       );
       expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith({
-        where: { reference: "DEBS-123" },
+        where: {
+          reference: "DEBS-123",
+          status: { notIn: ["SUCCESSFUL", "FAILED", "REVERSED"] },
+        },
         data: { status: "SUCCESSFUL" },
       });
     });
@@ -475,7 +481,9 @@ describe("lencoService", () => {
         id: "evt-2",
         eventType: "transfer.failed",
       });
-      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: null },
+      ]);
       mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
 
@@ -485,7 +493,10 @@ describe("lencoService", () => {
       });
 
       expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith({
-        where: { reference: "DEBS-456" },
+        where: {
+          reference: "DEBS-456",
+          status: { notIn: ["SUCCESSFUL", "FAILED", "REVERSED"] },
+        },
         data: {
           status: "FAILED",
           failureReason: "Insufficient funds",
@@ -562,6 +573,13 @@ describe("lencoService", () => {
         reference: "DEBS-123",
       });
 
+      expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith({
+        where: {
+          reference: "DEBS-123",
+          status: { notIn: ["SUCCESSFUL", "FAILED", "REVERSED"] },
+        },
+        data: { status: "SUCCESSFUL" },
+      });
       expect(mockPrisma.claim.updateMany).toHaveBeenCalledWith({
         where: { id: { in: ["claim-1"] } },
         data: {
@@ -588,6 +606,16 @@ describe("lencoService", () => {
         reason: "Insufficient funds",
       });
 
+      expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith({
+        where: {
+          reference: "DEBS-456",
+          status: { notIn: ["SUCCESSFUL", "FAILED", "REVERSED"] },
+        },
+        data: {
+          status: "FAILED",
+          failureReason: "Insufficient funds",
+        },
+      });
       expect(mockPrisma.claim.updateMany).toHaveBeenCalledWith({
         where: { id: { in: ["claim-2"] } },
         data: { payoutStatus: "FAILED" },
@@ -612,6 +640,228 @@ describe("lencoService", () => {
       expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
     });
 
+    // ── Terminal-state guards ─────────────────────────────────────────
+
+    it("should not overwrite SUCCESSFUL transfer on transfer.failed (critical guard)", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-guard-1",
+        eventType: "transfer.failed",
+      });
+      // findMany inside transaction returns empty — all transfers are terminal
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.failed", {
+        reference: "DEBS-TERMINAL",
+        reason: "Stale failure",
+      });
+
+      expect(mockPrisma.lencoTransfer.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("should not overwrite FAILED transfer on transfer.successful", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-guard-2",
+        eventType: "transfer.successful",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.successful", {
+        reference: "DEBS-ALREADY-FAILED",
+      });
+
+      expect(mockPrisma.lencoTransfer.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
+    });
+
+    // ── Reversal handling ─────────────────────────────────────────────
+
+    it("should set REVERSED and claim to FAILED on transfer.reversed", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-rev-1",
+        eventType: "transfer.reversed",
+      });
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: "claim-rev-1" },
+      ]);
+      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.claim.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.reversed", {
+        reference: "DEBS-REVERSED",
+      });
+
+      expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith({
+        where: { reference: "DEBS-REVERSED", status: { not: "REVERSED" } },
+        data: { status: "REVERSED" },
+      });
+      expect(mockPrisma.claim.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ["claim-rev-1"] } },
+        data: { payoutStatus: "FAILED" },
+      });
+    });
+
+    it("should allow SUCCESSFUL → REVERSED transition on transfer.reversed", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-rev-2",
+        eventType: "transfer.reversed",
+      });
+      // Returns the previously-SUCCESSFUL transfer (it is not REVERSED yet)
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([
+        { claimId: "claim-was-paid" },
+      ]);
+      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.claim.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.reversed", {
+        reference: "DEBS-WAS-SUCCESSFUL",
+      });
+
+      expect(mockPrisma.lencoTransfer.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: "REVERSED" } }),
+      );
+      expect(mockPrisma.claim.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { payoutStatus: "FAILED" } }),
+      );
+    });
+
+    it("should skip updates on transfer.reversed when transfer is already REVERSED", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-rev-3",
+        eventType: "transfer.reversed",
+      });
+      // findMany with status: { not: "REVERSED" } returns empty
+      mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transfer.reversed", {
+        reference: "DEBS-ALREADY-REVERSED",
+      });
+
+      expect(mockPrisma.lencoTransfer.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.claim.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("should set REVERSED and claim to FAILED on transaction.reversed via narration", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-txrev-1",
+        eventType: "transaction.reversed",
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce({
+        id: "transfer-rev-1",
+        claimId: "claim-txrev-1",
+        status: "SUCCESSFUL",
+      });
+      mockPrisma.$transaction.mockImplementationOnce(
+        (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma),
+      );
+      mockPrisma.lencoTransfer.update.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.claim.update.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transaction.reversed", {
+        id: "evt-uuid-txrev",
+        narration: "DEBS CLM-2024-0001 payout / 2615402999",
+        amount: "5.00",
+      });
+
+      expect(mockPrisma.lencoTransfer.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            lencoResponse: { path: ["lencoReference"], equals: "2615402999" },
+          }),
+        }),
+      );
+      expect(mockPrisma.lencoTransfer.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: "REVERSED" } }),
+      );
+      expect(mockPrisma.claim.update).toHaveBeenCalledWith({
+        where: { id: "claim-txrev-1" },
+        data: { payoutStatus: "FAILED" },
+      });
+    });
+
+    it("should update claim to FAILED on transaction.reversed even if transfer already REVERSED", async () => {
+      mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-txrev-2",
+        eventType: "transaction.reversed",
+      });
+      mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce({
+        id: "transfer-rev-2",
+        claimId: "claim-txrev-2",
+        status: "REVERSED",
+      });
+      mockPrisma.$transaction.mockImplementationOnce(
+        (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma),
+      );
+      mockPrisma.claim.update.mockResolvedValueOnce({});
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("transaction.reversed", {
+        id: "evt-uuid-txrev-2",
+        narration: "DEBS CLM-2024-0002 payout / 9876543210",
+        amount: "5.00",
+      });
+
+      // Transfer already REVERSED — should not call update on it again
+      expect(mockPrisma.lencoTransfer.update).not.toHaveBeenCalled();
+      // Claim update always fires for reversal signals
+      expect(mockPrisma.claim.update).toHaveBeenCalledWith({
+        where: { id: "claim-txrev-2" },
+        data: { payoutStatus: "FAILED" },
+      });
+    });
+
+    // ── collection.pay_offline ────────────────────────────────────────
+
+    it("should set PAY_OFFLINE on a PENDING collection", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-pof-1",
+        eventType: "collection.pay_offline",
+      });
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "col-offline",
+        reference: "DEBS-OFFLINE",
+        status: "PENDING",
+      });
+      mockPrisma.lencoCollection.update.mockResolvedValueOnce({});
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("collection.pay_offline", {
+        reference: "DEBS-OFFLINE",
+      });
+
+      expect(mockPrisma.lencoCollection.update).toHaveBeenCalledWith({
+        where: { reference: "DEBS-OFFLINE" },
+        data: { status: "PAY_OFFLINE" },
+      });
+    });
+
+    it("should not update a non-PENDING collection on collection.pay_offline", async () => {
+      mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
+        id: "evt-pof-2",
+        eventType: "collection.pay_offline",
+      });
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "col-already-done",
+        reference: "DEBS-DONE",
+        status: "SUCCESSFUL",
+      });
+      mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
+
+      await lencoService.processWebhookEvent("collection.pay_offline", {
+        reference: "DEBS-DONE",
+      });
+
+      expect(mockPrisma.lencoCollection.update).not.toHaveBeenCalled();
+    });
+
     // ── transaction.debit / transaction.credit ────────────────────────
 
     it("should update transfer and claim on transaction.debit when narration contains lencoReference", async () => {
@@ -623,6 +873,7 @@ describe("lencoService", () => {
       mockPrisma.lencoTransfer.findFirst.mockResolvedValueOnce({
         id: "transfer-debit-1",
         claimId: "claim-debit-1",
+        status: "PROCESSING",
       });
       mockPrisma.$transaction.mockImplementationOnce(
         (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma),
@@ -697,7 +948,6 @@ describe("lencoService", () => {
     // ── Idempotency tests ──────────────────────────────────────────────
 
     it("should return { skipped: true } for a duplicate webhook (same idempotency key, already processed)", async () => {
-      // Simulate an already-processed event stored with idempotencyKey
       mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce({
         id: "evt-dup",
         eventType: "transfer.successful",
@@ -732,7 +982,6 @@ describe("lencoService", () => {
     });
 
     it("should store idempotencyKey and process normally on first delivery", async () => {
-      // No prior event exists
       mockPrisma.lencoWebhookEvent.findUnique.mockResolvedValueOnce(null);
       mockPrisma.lencoWebhookEvent.create.mockResolvedValueOnce({
         id: "evt-new",
@@ -740,7 +989,6 @@ describe("lencoService", () => {
         idempotencyKey: "transfer.successful:DEBS-NEW",
       });
       mockPrisma.lencoTransfer.findMany.mockResolvedValueOnce([]);
-      mockPrisma.lencoTransfer.updateMany.mockResolvedValueOnce({ count: 1 });
       mockPrisma.lencoWebhookEvent.update.mockResolvedValueOnce({});
 
       const result = await lencoService.processWebhookEvent(
@@ -767,15 +1015,140 @@ describe("lencoService", () => {
         someField: "someValue",
       });
 
-      // findUnique should NOT have been called (no key to look up)
       expect(mockPrisma.lencoWebhookEvent.findUnique).not.toHaveBeenCalled();
-      // create should have been called without idempotencyKey
       expect(mockPrisma.lencoWebhookEvent.create).toHaveBeenCalledWith({
         data: expect.not.objectContaining({
           idempotencyKey: expect.anything(),
         }),
       });
       expect((result as any).id).toBe("evt-noidp");
+    });
+  });
+
+  // ── Polling terminal-state guards ────────────────────────────────────
+
+  describe("getTransferStatus — terminal-state guard", () => {
+    it("should not update a SUCCESSFUL transfer via polling", async () => {
+      mockPrisma.lencoTransfer.findUnique.mockResolvedValueOnce({
+        id: "t-1",
+        reference: "DEBS-123",
+        status: "SUCCESSFUL",
+        recipient: {},
+        claim: null,
+      });
+      mockLenco.getTransferStatus.mockResolvedValueOnce({
+        status: true,
+        data: { status: "failed" },
+      });
+
+      await lencoService.getTransferStatus("DEBS-123");
+
+      expect(mockPrisma.lencoTransfer.update).not.toHaveBeenCalled();
+    });
+
+    it("should not update a FAILED transfer via polling", async () => {
+      mockPrisma.lencoTransfer.findUnique.mockResolvedValueOnce({
+        id: "t-2",
+        reference: "DEBS-456",
+        status: "FAILED",
+        recipient: {},
+        claim: null,
+      });
+      mockLenco.getTransferStatus.mockResolvedValueOnce({
+        status: true,
+        data: { status: "successful" },
+      });
+
+      await lencoService.getTransferStatus("DEBS-456");
+
+      expect(mockPrisma.lencoTransfer.update).not.toHaveBeenCalled();
+    });
+
+    it("should update a non-terminal transfer via polling", async () => {
+      mockPrisma.lencoTransfer.findUnique.mockResolvedValueOnce({
+        id: "t-3",
+        reference: "DEBS-789",
+        status: "PROCESSING",
+        recipient: {},
+        claim: null,
+      });
+      mockLenco.getTransferStatus.mockResolvedValueOnce({
+        status: true,
+        data: { status: "successful" },
+      });
+      mockPrisma.lencoTransfer.update.mockResolvedValueOnce({});
+
+      await lencoService.getTransferStatus("DEBS-789");
+
+      expect(mockPrisma.lencoTransfer.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "SUCCESSFUL" }),
+        }),
+      );
+    });
+  });
+
+  describe("getCollectionStatus — terminal-state guard", () => {
+    it("should not update a SUCCESSFUL collection via polling", async () => {
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "c-1",
+        reference: "DEBS-COL-1",
+        status: "SUCCESSFUL",
+        user: {},
+        policy: {},
+        payment: null,
+      });
+      mockLenco.getCollectionByReference.mockResolvedValueOnce({
+        status: true,
+        data: { status: "failed" },
+      });
+
+      await lencoService.getCollectionStatus("DEBS-COL-1");
+
+      expect(mockPrisma.lencoCollection.update).not.toHaveBeenCalled();
+    });
+
+    it("should not update a FAILED collection via polling", async () => {
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "c-2",
+        reference: "DEBS-COL-2",
+        status: "FAILED",
+        user: {},
+        policy: {},
+        payment: null,
+      });
+      mockLenco.getCollectionByReference.mockResolvedValueOnce({
+        status: true,
+        data: { status: "successful" },
+      });
+
+      await lencoService.getCollectionStatus("DEBS-COL-2");
+
+      expect(mockPrisma.lencoCollection.update).not.toHaveBeenCalled();
+    });
+
+    it("should allow PAY_OFFLINE → SUCCESSFUL via polling (PAY_OFFLINE is not terminal)", async () => {
+      mockPrisma.lencoCollection.findUnique.mockResolvedValueOnce({
+        id: "c-3",
+        reference: "DEBS-COL-3",
+        status: "PAY_OFFLINE",
+        user: {},
+        policy: {},
+        payment: null,
+      });
+      mockLenco.getCollectionByReference.mockResolvedValueOnce({
+        status: true,
+        data: { status: "successful" },
+      });
+      mockPrisma.lencoCollection.update.mockResolvedValueOnce({});
+
+      await lencoService.getCollectionStatus("DEBS-COL-3");
+
+      expect(mockPrisma.lencoCollection.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "SUCCESSFUL" }),
+        }),
+      );
     });
   });
 
