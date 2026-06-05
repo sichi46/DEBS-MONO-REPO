@@ -9,6 +9,9 @@ import {
   CreditCard,
   Settings,
   LogOut,
+  Search as SearchIcon,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 import {
@@ -41,6 +44,7 @@ const navigationItems = [
   { name: "My Policies", path: "/dashboard/policies", icon: Shield },
   { name: "Claims", path: "/dashboard/claims", icon: FileText },
   { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
+  { name: "Browse Plans", path: "/dashboard/browse", icon: SearchIcon },
   { name: "Settings", path: "/dashboard/settings", icon: Settings },
 ];
 
@@ -54,6 +58,15 @@ export function MobileHeader() {
   const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
   const [open, setOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [dark, setDark] = useState(() =>
+    document.documentElement.classList.contains("dark"),
+  );
+  const toggleDark = () => {
+    const next = !dark;
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    setDark(next);
+  };
 
   // Generate user initials
   const getInitials = (name: string | undefined) => {
@@ -92,80 +105,91 @@ export function MobileHeader() {
         <span className="text-lg font-bold text-primary">Debs Insurance</span>
       </div>
 
-      {/* Hamburger Menu */}
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden">
-            <Menu className="h-6 w-6" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-56 p-0 flex flex-col">
-          <SheetHeader className="p-4 border-b border-border">
-            <SheetTitle className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Shield className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold text-primary">
-                Debs Insurance
-              </span>
-            </SheetTitle>
-          </SheetHeader>
-
-          {/* Navigation */}
-          <nav className="flex-1 flex flex-col p-3 space-y-1">
-            {navigationItems.map((item) => {
-              const isActive =
-                item.path === "/dashboard"
-                  ? location.pathname === "/dashboard"
-                  : location.pathname.startsWith(item.path);
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Footer with User Info */}
-          <div className="mt-auto p-3 border-t border-border bg-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
-                {getInitials(user?.name)}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-foreground truncate">
-                  {user?.name || "User"}
-                </span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {user?.email || ""}
-                </span>
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              onClick={() => setShowLogoutDialog(true)}
-              className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              <LogOut className="h-5 w-5 mr-2" />
-              Logout
+      {/* Right actions */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={toggleDark}
+        >
+          {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
+        {/* Hamburger Menu */}
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle menu</span>
             </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-56 p-0 flex flex-col">
+            <SheetHeader className="p-4 border-b border-border">
+              <SheetTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-bold text-primary">
+                  Debs Insurance
+                </span>
+              </SheetTitle>
+            </SheetHeader>
+
+            {/* Navigation */}
+            <nav className="flex-1 flex flex-col p-3 space-y-1">
+              {navigationItems.map((item) => {
+                const isActive =
+                  item.path === "/dashboard"
+                    ? location.pathname === "/dashboard"
+                    : location.pathname.startsWith(item.path);
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Footer with User Info */}
+            <div className="mt-auto p-3 border-t border-border bg-card">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                  {getInitials(user?.name)}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-medium text-foreground truncate">
+                    {user?.name || "User"}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {user?.email || ""}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                onClick={() => setShowLogoutDialog(true)}
+                className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="h-5 w-5 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>

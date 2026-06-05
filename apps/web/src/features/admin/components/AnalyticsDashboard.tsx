@@ -4,9 +4,8 @@ import {
   ClipboardList,
   DollarSign,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -30,62 +29,43 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import {
   useAdminStats,
   useMonthlyData,
   usePolicyDistribution,
 } from "../hooks/useAdmin";
 
-function StatCard({
-  title,
-  value,
-  change,
-  changeType,
-  icon: Icon,
-  description,
-}: {
-  title: string;
-  value: string | number;
-  change?: string;
-  changeType?: "increase" | "decrease";
-  icon: React.ElementType;
-  description?: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
-            {change && (
-              <div className="flex items-center gap-1 text-xs">
-                {changeType === "increase" ? (
-                  <>
-                    <ArrowUpRight className="h-3 w-3 text-success" />
-                    <span className="text-success">{change}</span>
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownRight className="h-3 w-3 text-destructive" />
-                    <span className="text-destructive">{change}</span>
-                  </>
-                )}
-                <span className="text-muted-foreground">vs last month</span>
-              </div>
-            )}
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
-          </div>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <Icon className="h-6 w-6 text-primary" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// Minimal mock for "needs attention" — in production this comes from the API
+const attentionClaims = [
+  {
+    id: "CLM-001",
+    type: "Medical",
+    amount: "ZMW 45,000",
+    customer: "Grace M.",
+    priority: "high" as const,
+  },
+  {
+    id: "CLM-002",
+    type: "Auto",
+    amount: "ZMW 12,500",
+    customer: "Chanda K.",
+    priority: "medium" as const,
+  },
+  {
+    id: "CLM-003",
+    type: "Home",
+    amount: "ZMW 8,200",
+    customer: "Mwale B.",
+    priority: "low" as const,
+  },
+];
+
+const priorityVariant: Record<string, string> = {
+  high: "bg-destructive/10 text-destructive border-destructive/20",
+  medium: "bg-warning/10 text-warning border-warning/20",
+  low: "bg-success/10 text-success border-success/20",
+};
 
 export function AnalyticsDashboard() {
   const { data: stats, isLoading: statsLoading } = useAdminStats();
@@ -102,47 +82,51 @@ export function AnalyticsDashboard() {
   }
 
   return (
-    <div className="space-y-6" data-testid="analytics-dashboard">
-      {/* Header */}
-      <div>
-        <p className="text-muted-foreground">
-          Overview of your insurance business performance
-        </p>
-      </div>
+    <div
+      className="space-y-6 animate-fade-up"
+      data-testid="analytics-dashboard"
+    >
+      <p className="text-muted-foreground">
+        Overview of your insurance business performance
+      </p>
 
       {/* Key Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Users"
+          label="Total Users"
           value={stats?.totalUsers ?? 0}
+          sublabel={`${stats?.activeUsers ?? 0} active`}
           icon={Users}
-          description={`${stats?.activeUsers ?? 0} active`}
+          tone="primary"
         />
         <StatCard
-          title="Active Policies"
+          label="Active Policies"
           value={stats?.activePolicies ?? 0}
+          sublabel={`${stats?.totalPolicies ?? 0} total`}
           icon={FileText}
-          description={`${stats?.totalPolicies ?? 0} total`}
+          tone="success"
         />
         <StatCard
-          title="Pending Claims"
+          label="Pending Claims"
           value={stats?.pendingClaims ?? 0}
+          sublabel={`${stats?.totalClaims ?? 0} total claims`}
           icon={ClipboardList}
-          description={`${stats?.totalClaims ?? 0} total claims`}
+          tone="warning"
         />
         <StatCard
-          title="Monthly Revenue"
+          label="Monthly Revenue"
           value={stats?.monthlyRevenue ?? "ZMW 0"}
           icon={DollarSign}
+          tone="neutral"
         />
       </div>
 
-      {/* Revenue Chart */}
+      {/* Revenue Chart + Policy Distribution */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-primary" />
               Revenue vs Payouts
             </CardTitle>
             <CardDescription>
@@ -150,7 +134,7 @@ export function AnalyticsDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[280px]">
               {monthlyLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -169,7 +153,7 @@ export function AnalyticsDashboard() {
                         <stop
                           offset="5%"
                           stopColor="#0057B7"
-                          stopOpacity={0.3}
+                          stopOpacity={0.25}
                         />
                         <stop
                           offset="95%"
@@ -186,12 +170,12 @@ export function AnalyticsDashboard() {
                       >
                         <stop
                           offset="5%"
-                          stopColor="#64748B"
-                          stopOpacity={0.3}
+                          stopColor="#D9892A"
+                          stopOpacity={0.25}
                         />
                         <stop
                           offset="95%"
-                          stopColor="#64748B"
+                          stopColor="#D9892A"
                           stopOpacity={0}
                         />
                       </linearGradient>
@@ -203,7 +187,7 @@ export function AnalyticsDashboard() {
                     <XAxis dataKey="month" className="text-xs" />
                     <YAxis
                       className="text-xs"
-                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
                     />
                     <Tooltip
                       formatter={(value: number) => [
@@ -227,7 +211,7 @@ export function AnalyticsDashboard() {
                     <Area
                       type="monotone"
                       dataKey="payouts"
-                      stroke="#64748B"
+                      stroke="#D9892A"
                       fillOpacity={1}
                       fill="url(#colorPayouts)"
                       name="Payouts"
@@ -239,10 +223,10 @@ export function AnalyticsDashboard() {
           </CardContent>
         </Card>
 
-        {/* Policy Distribution Pie Chart */}
+        {/* Policy Distribution */}
         <Card>
-          <CardHeader>
-            <CardTitle>Policy Distribution</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Policy Distribution</CardTitle>
             <CardDescription>Breakdown by policy type</CardDescription>
           </CardHeader>
           <CardContent>
@@ -252,7 +236,7 @@ export function AnalyticsDashboard() {
               </div>
             ) : policyDistribution && policyDistribution.length > 0 ? (
               <>
-                <div className="h-[200px]">
+                <div className="h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -260,7 +244,7 @@ export function AnalyticsDashboard() {
                         cx="50%"
                         cy="50%"
                         innerRadius={40}
-                        outerRadius={80}
+                        outerRadius={70}
                         paddingAngle={2}
                         dataKey="count"
                       >
@@ -278,15 +262,15 @@ export function AnalyticsDashboard() {
                           props.payload.type,
                         ]}
                         contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #CBD5E0",
                           borderRadius: "8px",
                         }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="mt-3 space-y-2">
                   {policyDistribution.map((item: any) => (
                     <div
                       key={item.type}
@@ -294,7 +278,7 @@ export function AnalyticsDashboard() {
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className="h-3 w-3 rounded-full"
+                          className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
                         <span className="text-muted-foreground">
@@ -315,18 +299,103 @@ export function AnalyticsDashboard() {
         </Card>
       </div>
 
-      {/* Claims & New Policies Chart */}
+      {/* Needs your attention + summary cards */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Attention queue */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              Needs your attention
+            </CardTitle>
+            <CardDescription>Claims awaiting review</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {attentionClaims.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {c.id} · {c.type}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.customer}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold">{c.amount}</span>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full border ${priorityVariant[c.priority]}`}
+                    >
+                      {c.priority}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Summary cards */}
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">
+                Total Revenue (YTD)
+              </p>
+              <p className="text-xl font-bold mt-1">
+                {stats?.totalRevenue ?? "ZMW 0"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">
+                Total Payouts (YTD)
+              </p>
+              <p className="text-xl font-bold mt-1">
+                {stats?.totalPayouts ?? "ZMW 0"}
+              </p>
+            </CardContent>
+          </Card>
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="p-5">
+                <p className="text-xs text-muted-foreground">Approved</p>
+                <p className="text-lg font-bold mt-1 text-success">
+                  {stats?.approvedClaims ?? 0}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-5">
+                <p className="text-xs text-muted-foreground">Rejected</p>
+                <p className="text-lg font-bold mt-1 text-destructive">
+                  {stats?.rejectedClaims ?? 0}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts: New Policies & Claims Filed */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-primary" />
               New Policies
             </CardTitle>
             <CardDescription>Monthly new policy registrations</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px]">
+            <div className="h-[220px]">
               {monthlyLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -361,15 +430,15 @@ export function AnalyticsDashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-primary" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardList className="h-4 w-4 text-primary" />
               Claims Filed
             </CardTitle>
             <CardDescription>Monthly claims submitted</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px]">
+            <div className="h-[220px]">
               {monthlyLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -392,57 +461,13 @@ export function AnalyticsDashboard() {
                     />
                     <Bar
                       dataKey="claims"
-                      fill="#64748B"
+                      fill="#D9892A"
                       radius={[4, 4, 0, 0]}
                       name="Claims"
                     />
                   </BarChart>
                 </ResponsiveContainer>
               )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                Total Revenue (YTD)
-              </p>
-              <p className="text-2xl font-bold">
-                {stats?.totalRevenue ?? "ZMW 0"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                Total Payouts (YTD)
-              </p>
-              <p className="text-2xl font-bold">
-                {stats?.totalPayouts ?? "ZMW 0"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Approved Claims</p>
-              <p className="text-2xl font-bold">{stats?.approvedClaims ?? 0}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Rejected Claims</p>
-              <p className="text-2xl font-bold">{stats?.rejectedClaims ?? 0}</p>
             </div>
           </CardContent>
         </Card>

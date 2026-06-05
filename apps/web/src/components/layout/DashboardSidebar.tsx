@@ -8,6 +8,7 @@ import {
   CreditCard,
   Settings,
   LogOut,
+  Search as SearchIcon,
 } from "lucide-react";
 import {
   userAtom,
@@ -45,6 +46,7 @@ const navigationItems = [
   { name: "My Policies", path: "/dashboard/policies", icon: Shield },
   { name: "Claims", path: "/dashboard/claims", icon: FileText },
   { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
+  { name: "Browse Plans", path: "/dashboard/browse", icon: SearchIcon },
   { name: "Settings", path: "/dashboard/settings", icon: Settings },
 ];
 
@@ -94,9 +96,16 @@ export function DashboardSidebar() {
       <SidebarHeader className="h-14 px-4 flex flex-row items-center gap-3 border-b border-sidebar-border">
         <SidebarTrigger className="shrink-0" />
         {!isCollapsed && (
-          <span className="text-xl font-bold text-primary truncate">
-            Debs Insurance
-          </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <span className="text-primary-foreground text-xs font-bold">
+                D
+              </span>
+            </div>
+            <span className="text-base font-bold text-sidebar-foreground truncate">
+              Debs Insurance
+            </span>
+          </div>
         )}
       </SidebarHeader>
 
@@ -140,7 +149,7 @@ export function DashboardSidebar() {
 
         {/* User Info */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold shrink-0">
+          <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm shrink-0">
             {getInitials(user?.name)}
           </div>
           {!isCollapsed && (

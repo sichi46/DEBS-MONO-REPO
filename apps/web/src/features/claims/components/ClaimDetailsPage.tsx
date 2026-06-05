@@ -1,8 +1,10 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IconChip } from "@/components/ui/icon-chip";
+import { ClaimsTracker } from "@/components/ui/claims-tracker";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   FileText,
@@ -14,19 +16,33 @@ import {
 import { useClaimDetails } from "../hooks/useClaims";
 import type { ClaimStatus } from "@/lib/mock-data";
 
-function getStatusVariant(
-  status: ClaimStatus,
-): "default" | "secondary" | "destructive" | "outline" {
+function statusStep(status: ClaimStatus): number {
+  switch (status) {
+    case "Pending":
+      return 0;
+    case "Under Review":
+      return 1;
+    case "Approved":
+      return 3;
+    case "Rejected":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function statusChipClass(status: ClaimStatus) {
   switch (status) {
     case "Approved":
-      return "default";
+      return "bg-success/10 text-success border-success/20";
     case "Pending":
+      return "bg-warning/10 text-warning border-warning/20";
     case "Under Review":
-      return "secondary";
+      return "bg-primary/10 text-primary border-primary/20";
     case "Rejected":
-      return "destructive";
+      return "bg-destructive/10 text-destructive border-destructive/20";
     default:
-      return "outline";
+      return "bg-muted text-muted-foreground";
   }
 }
 
@@ -74,9 +90,7 @@ export function ClaimDetailsPage() {
     );
   }
 
-  if (isLoading) {
-    return <DetailsSkeleton />;
-  }
+  if (isLoading) return <DetailsSkeleton />;
 
   if (!claim) {
     return (
@@ -91,69 +105,87 @@ export function ClaimDetailsPage() {
   }
 
   return (
-    <div className="space-y-6" data-testid="claim-details-page">
+    <div className="space-y-6 animate-fade-up" data-testid="claim-details-page">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => navigate("/dashboard/claims")}
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Claims
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Back
           </Button>
           <div>
-            <p className="text-muted-foreground">Claim #{claim.claimId}</p>
+            <p className="text-sm text-muted-foreground">
+              Claim #{claim.claimId}
+            </p>
           </div>
         </div>
-        <Badge
-          variant={getStatusVariant(claim.status)}
-          className="text-sm px-3 py-1"
+        <span
+          className={cn(
+            "text-xs font-semibold px-3 py-1 rounded-full border",
+            statusChipClass(claim.status),
+          )}
         >
           {claim.status}
-        </Badge>
+        </span>
       </div>
+
+      {/* Claims progress tracker */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            Claim Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2 pb-6">
+          <ClaimsTracker
+            currentStep={statusStep(claim.status)}
+            className="px-4"
+          />
+        </CardContent>
+      </Card>
 
       {/* Claim Information */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-primary" />
             Claim Information
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <FileText className="h-4 w-4" />
-                <span className="text-sm">Claim Type</span>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <div className="flex items-start gap-3">
+              <IconChip icon={FileText} tone="primary" size="sm" />
+              <div>
+                <p className="text-xs text-muted-foreground">Claim Type</p>
+                <p className="font-semibold">{claim.claimType}</p>
               </div>
-              <p className="text-lg font-medium">{claim.claimType}</p>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <DollarSign className="h-4 w-4" />
-                <span className="text-sm">Claim Amount</span>
+            <div className="flex items-start gap-3">
+              <IconChip icon={DollarSign} tone="success" size="sm" />
+              <div>
+                <p className="text-xs text-muted-foreground">Claim Amount</p>
+                <p className="text-xl font-bold">{claim.claimAmount}</p>
               </div>
-              <p className="text-2xl font-bold">{claim.claimAmount}</p>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm">Date Submitted</span>
+            <div className="flex items-start gap-3">
+              <IconChip icon={Calendar} tone="neutral" size="sm" />
+              <div>
+                <p className="text-xs text-muted-foreground">Date Submitted</p>
+                <p className="font-semibold">{claim.dateSubmitted}</p>
               </div>
-              <p className="text-lg font-medium">{claim.dateSubmitted}</p>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span className="text-sm">Date Processed</span>
+            <div className="flex items-start gap-3">
+              <IconChip icon={Clock} tone="neutral" size="sm" />
+              <div>
+                <p className="text-xs text-muted-foreground">Date Processed</p>
+                <p className="font-semibold">{claim.dateProcessed}</p>
               </div>
-              <p className="text-lg font-medium">{claim.dateProcessed}</p>
             </div>
           </div>
         </CardContent>
@@ -161,16 +193,16 @@ export function ClaimDetailsPage() {
 
       {/* Related Policy */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-primary" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileCheck className="h-4 w-4 text-primary" />
             Related Policy
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
+          <div className="flex items-center justify-between rounded-xl bg-muted/50 p-4">
             <div>
-              <p className="font-medium">{claim.policyType}</p>
+              <p className="font-semibold">{claim.policyType}</p>
               <p className="text-sm text-muted-foreground">
                 {claim.policyNumber}
               </p>
@@ -187,66 +219,19 @@ export function ClaimDetailsPage() {
       {/* Description */}
       {claim.description && (
         <Card>
-          <CardHeader>
-            <CardTitle>Description</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Description</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{claim.description}</p>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {claim.description}
+            </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Status Timeline - Simplified for now */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Claim Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium">Claim Submitted</p>
-              <p className="text-sm text-muted-foreground">
-                Your claim was submitted on {claim.dateSubmitted}
-              </p>
-            </div>
-          </div>
-          {claim.status !== "Pending" && (
-            <div className="mt-4 flex items-center gap-4 border-t pt-4">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  claim.status === "Approved"
-                    ? "bg-success text-success-foreground"
-                    : claim.status === "Rejected"
-                      ? "bg-destructive text-destructive-foreground"
-                      : "bg-primary text-primary-foreground"
-                }`}
-              >
-                <Clock className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">
-                  {claim.status === "Approved"
-                    ? "Claim Approved"
-                    : claim.status === "Rejected"
-                      ? "Claim Rejected"
-                      : "Under Review"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {claim.dateProcessed !== "—"
-                    ? `Processed on ${claim.dateProcessed}`
-                    : "Your claim is being reviewed by our team"}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Button variant="secondary" className="flex-1" asChild>
           <Link to="/dashboard/claims">
             <ArrowLeft className="h-4 w-4 mr-2" />

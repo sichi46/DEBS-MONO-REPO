@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, Upload, CheckCircle } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Upload,
+  CheckCircle,
+  Clock,
+  XCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useClaims,
@@ -177,11 +185,23 @@ export function ClaimsPage() {
     );
   }
 
-  const claims = data?.claims || [];
+  const allClaims = data?.claims || [];
   const stats = data?.stats;
 
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "in-progress" | "settled"
+  >("all");
+
+  const claims = allClaims.filter((c) => {
+    if (activeFilter === "in-progress")
+      return c.status === "Pending" || c.status === "Under Review";
+    if (activeFilter === "settled")
+      return c.status === "Approved" || c.status === "Rejected";
+    return true;
+  });
+
   return (
-    <div className="space-y-6" data-testid="claims-page">
+    <div className="space-y-6 animate-fade-up" data-testid="claims-page">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -383,70 +403,67 @@ export function ClaimsPage() {
 
       {/* Stats Summary */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Claims</p>
-              <p className="text-3xl font-bold">
-                {isLoading ? (
-                  <Skeleton className="h-9 w-8" />
-                ) : (
-                  stats?.total || 0
-                )}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Approved</p>
-              <p className="text-3xl font-bold text-success">
-                {isLoading ? (
-                  <Skeleton className="h-9 w-8" />
-                ) : (
-                  stats?.approved || 0
-                )}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-3xl font-bold text-warning">
-                {isLoading ? (
-                  <Skeleton className="h-9 w-8" />
-                ) : (
-                  stats?.pending || 0
-                )}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Rejected</p>
-              <p className="text-3xl font-bold text-destructive">
-                {isLoading ? (
-                  <Skeleton className="h-9 w-8" />
-                ) : (
-                  stats?.rejected || 0
-                )}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Total Claims"
+          value={isLoading ? "—" : stats?.total || 0}
+          icon={FileText}
+          tone="primary"
+          isLoading={isLoading}
+        />
+        <StatCard
+          label="Approved"
+          value={isLoading ? "—" : stats?.approved || 0}
+          icon={CheckCircle}
+          tone="success"
+          isLoading={isLoading}
+        />
+        <StatCard
+          label="Pending"
+          value={isLoading ? "—" : stats?.pending || 0}
+          icon={Clock}
+          tone="warning"
+          isLoading={isLoading}
+        />
+        <StatCard
+          label="Rejected"
+          value={isLoading ? "—" : stats?.rejected || 0}
+          icon={XCircle}
+          tone="danger"
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        {(["all", "in-progress", "settled"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setActiveFilter(f)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              activeFilter === f
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {f === "all"
+              ? "All"
+              : f === "in-progress"
+                ? "In Progress"
+                : "Settled"}
+          </button>
+        ))}
       </div>
 
       {/* Claims Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            All Claims
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-primary" />
+            {activeFilter === "all"
+              ? "All Claims"
+              : activeFilter === "in-progress"
+                ? "In Progress"
+                : "Settled Claims"}
           </CardTitle>
         </CardHeader>
         <CardContent>

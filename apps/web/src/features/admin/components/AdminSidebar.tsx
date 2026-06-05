@@ -90,13 +90,23 @@ export function AdminSidebar() {
       <SidebarHeader className="h-14 px-4 flex flex-row items-center gap-3 border-b border-sidebar-border">
         <SidebarTrigger className="shrink-0" />
         {!isCollapsed && (
-          <div className="flex flex-col min-w-0">
-            <span className="text-lg font-bold text-primary truncate">
-              DEBS Admin
-            </span>
-            <Badge variant="secondary" className="w-fit text-xs">
-              Admin Portal
-            </Badge>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <span className="text-primary-foreground text-xs font-bold">
+                D
+              </span>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold text-sidebar-foreground truncate leading-tight">
+                Debs Insurance
+              </span>
+              <Badge
+                variant="secondary"
+                className="w-fit text-[10px] px-1.5 py-0 leading-tight"
+              >
+                Admin
+              </Badge>
+            </div>
           </div>
         )}
       </SidebarHeader>
@@ -141,7 +151,7 @@ export function AdminSidebar() {
 
         {/* User Info */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold shrink-0">
+          <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm shrink-0">
             {avatarInitials}
           </div>
           {!isCollapsed && (
