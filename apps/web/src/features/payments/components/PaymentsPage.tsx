@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -10,9 +9,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, Download, Filter } from "lucide-react";
+import { StatCard } from "@/components/ui/stat-card";
+import {
+  CreditCard,
+  Download,
+  Filter,
+  Smartphone,
+  Building2,
+  Repeat,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { mockPaymentHistory, type PaymentStatus } from "@/lib/mock-data";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const paymentsApi = {
   getPayments: async () => {
@@ -34,6 +42,24 @@ function getStatusVariant(
     default:
       return "outline";
   }
+}
+
+function methodIcon(method: string) {
+  if (method.toLowerCase().includes("mobile"))
+    return <Smartphone className="h-3.5 w-3.5" />;
+  if (method.toLowerCase().includes("bank"))
+    return <Building2 className="h-3.5 w-3.5" />;
+  return <CreditCard className="h-3.5 w-3.5" />;
+}
+
+function methodLabel(method: string) {
+  // Enrich Mobile Money with provider info where recognisable
+  const m = method.toLowerCase();
+  if (m.includes("airtel")) return "Airtel Money";
+  if (m.includes("mtn")) return "MTN Money";
+  if (m.includes("zamtel")) return "Zamtel Money";
+  if (m.includes("mobile")) return "Mobile Money";
+  return method;
 }
 
 function PaymentRowSkeleton() {
@@ -88,76 +114,82 @@ export function PaymentsPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Calculate totals
   const totalPaid =
     payments
       ?.filter((p) => p.status === "Paid")
-      .reduce((sum, p) => {
-        const amount = parseInt(p.amount.replace(/\D/g, ""));
-        return sum + amount;
-      }, 0) || 0;
+      .reduce((sum, p) => sum + parseInt(p.amount.replace(/\D/g, "")), 0) || 0;
+
+  const hasAutopay = false; // wire to real data when API returns it
 
   return (
-    <div className="space-y-6" data-testid="payments-page">
+    <div className="space-y-6 animate-fade-up" data-testid="payments-page">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-muted-foreground">
-            View your payment history and manage upcoming payments
-          </p>
-        </div>
+        <p className="text-muted-foreground">
+          View your payment history and manage upcoming payments
+        </p>
         <Button className="pr-5">
           <CreditCard className="mr-2 h-4 w-4" />
           Make a Payment
         </Button>
       </div>
 
+      {/* Autopay nudge */}
+      {!hasAutopay && !isLoading && (
+        <div className="flex items-center justify-between rounded-xl bg-[color:var(--color-brand-accent-tint)] border border-[color:var(--color-brand-accent)]/20 px-5 py-4 gap-4">
+          <div className="flex items-center gap-3">
+            <Repeat className="h-5 w-5 text-[color:var(--color-brand-accent)] shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Set up autopay
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Never miss a premium — enable recurring payments for peace of
+                mind.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-[color:var(--color-brand-accent)]/40 text-[color:var(--color-brand-accent)] hover:bg-[color:var(--color-brand-accent)]/10"
+          >
+            Enable
+          </Button>
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Payments</p>
-              <div className="text-3xl font-bold">
-                {isLoading ? (
-                  <Skeleton className="h-9 w-8" />
-                ) : (
-                  payments?.length || 0
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Paid (YTD)</p>
-              <div className="text-3xl font-bold text-success">
-                {isLoading ? (
-                  <Skeleton className="h-9 w-24" />
-                ) : (
-                  `ZMW ${totalPaid.toLocaleString()}`
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Next Payment Due</p>
-              <p className="text-3xl font-bold">Nov 1, 2025</p>
-              <p className="text-sm text-muted-foreground">ZMW 2,050</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total Payments"
+          value={isLoading ? "—" : payments?.length || 0}
+          icon={CreditCard}
+          tone="primary"
+          isLoading={isLoading}
+        />
+        <StatCard
+          label="Total Paid (YTD)"
+          value={isLoading ? "—" : `ZMW ${totalPaid.toLocaleString()}`}
+          icon={CreditCard}
+          tone="success"
+          isLoading={isLoading}
+        />
+        <StatCard
+          label="Next Payment Due"
+          value="Nov 1, 2025"
+          sublabel="ZMW 2,050"
+          icon={CreditCard}
+          tone="warning"
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Payment History Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CreditCard className="h-4 w-4 text-primary" />
             Payment History
           </CardTitle>
           <div className="flex gap-2">
@@ -206,7 +238,12 @@ export function PaymentsPage() {
                         {payment.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{payment.method}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 text-sm">
+                        {methodIcon(payment.method)}
+                        {methodLabel(payment.method)}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (

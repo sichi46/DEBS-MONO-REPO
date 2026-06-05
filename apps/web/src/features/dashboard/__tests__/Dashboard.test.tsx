@@ -13,6 +13,19 @@ import {
   mockAvailablePolicies,
 } from "@/lib/mock-data";
 
+// Avoid rAF issues in jsdom
+vi.mock("@/components/ui/animated-count", () => ({
+  AnimatedCount: ({
+    to,
+    prefix = "",
+    suffix = "",
+  }: {
+    to: number;
+    prefix?: string;
+    suffix?: string;
+  }) => `${prefix}${to}${suffix}`,
+}));
+
 // Mock the API module with inline data to avoid hoisting issues
 vi.mock("../api", async () => {
   const mockData = await import("@/lib/mock-data");
@@ -52,7 +65,6 @@ describe("StatsCards", () => {
 
   it("displays correct stat values", () => {
     renderWithProviders(<StatsCards stats={mockDashboardStats} />);
-    // Use getAllByText since the same number might appear in multiple places
     expect(
       screen.getAllByText(mockDashboardStats.activePolicies.toString()).length,
     ).toBeGreaterThan(0);
@@ -161,7 +173,6 @@ describe("DashboardOverview", () => {
 
   it("renders the dashboard container", async () => {
     renderWithProviders(<DashboardOverview />);
-
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-overview")).toBeInTheDocument();
     });
@@ -169,15 +180,24 @@ describe("DashboardOverview", () => {
 
   it("displays welcome message", async () => {
     renderWithProviders(<DashboardOverview />);
-
     await waitFor(() => {
-      expect(screen.getByText(/Welcome back/)).toBeInTheDocument();
+      // V2: hero card says "Welcome back" as a label
+      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders quick action buttons", async () => {
+    renderWithProviders(<DashboardOverview />);
+    await waitFor(() => {
+      // "New Claim" appears in both quick actions and ClaimCard header
+      expect(screen.getAllByText("New Claim").length).toBeGreaterThan(0);
+      expect(screen.getByText("Make Payment")).toBeInTheDocument();
+      expect(screen.getByText("View Policies")).toBeInTheDocument();
     });
   });
 
   it("renders all dashboard sections", async () => {
     renderWithProviders(<DashboardOverview />);
-
     await waitFor(() => {
       expect(screen.getByTestId("stats-cards")).toBeInTheDocument();
       expect(screen.getByTestId("policy-card")).toBeInTheDocument();

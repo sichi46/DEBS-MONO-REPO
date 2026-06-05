@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
 import {
   Table,
   TableBody,
@@ -63,6 +64,19 @@ function getStatusVariant(
       return "secondary";
   }
 }
+
+function derivePriority(amountStr: string): "high" | "medium" | "low" {
+  const n = parseInt((amountStr ?? "0").replace(/\D/g, "")) || 0;
+  if (n >= 30000) return "high";
+  if (n >= 10000) return "medium";
+  return "low";
+}
+
+const priorityChipClass: Record<string, string> = {
+  high: "bg-destructive/10 text-destructive border-destructive/20",
+  medium: "bg-warning/10 text-warning border-warning/20",
+  low: "bg-success/10 text-success border-success/20",
+};
 
 export function AdminClaimsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -128,8 +142,12 @@ export function AdminClaimsPage() {
     );
   };
 
+  const [queueFilter, setQueueFilter] = useState<"queue" | "settled" | "all">(
+    "queue",
+  );
+
   return (
-    <div className="space-y-6" data-testid="admin-claims-page">
+    <div className="space-y-6 animate-fade-up" data-testid="admin-claims-page">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -148,66 +166,49 @@ export function AdminClaimsPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <ClipboardList className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Claims</p>
-                <p className="text-2xl font-bold">{stats?.totalClaims ?? 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-                <Clock className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">
-                  {stats?.pendingClaims ?? 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <CheckCircle className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold">
-                  {stats?.approvedClaims ?? 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-                <XCircle className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold">
-                  {stats?.rejectedClaims ?? 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Total Claims"
+          value={stats?.totalClaims ?? 0}
+          icon={ClipboardList}
+          tone="primary"
+        />
+        <StatCard
+          label="Pending"
+          value={stats?.pendingClaims ?? 0}
+          icon={Clock}
+          tone="warning"
+        />
+        <StatCard
+          label="Approved"
+          value={stats?.approvedClaims ?? 0}
+          icon={CheckCircle}
+          tone="success"
+        />
+        <StatCard
+          label="Rejected"
+          value={stats?.rejectedClaims ?? 0}
+          icon={XCircle}
+          tone="danger"
+        />
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        {(["queue", "settled", "all"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setQueueFilter(f)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${
+              queueFilter === f
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {f === "queue" ? "Queue" : f === "settled" ? "Settled" : "All"}
+          </button>
+        ))}
       </div>
 
       {/* Claims Table */}
@@ -267,6 +268,7 @@ export function AdminClaimsPage() {
                       </TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -303,6 +305,13 @@ export function AdminClaimsPage() {
                             <Badge variant={getStatusVariant(claim.status)}>
                               {claim.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`text-xs font-medium px-2 py-0.5 rounded-full border ${priorityChipClass[derivePriority(claim.claimAmount)]}`}
+                            >
+                              {derivePriority(claim.claimAmount)}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>

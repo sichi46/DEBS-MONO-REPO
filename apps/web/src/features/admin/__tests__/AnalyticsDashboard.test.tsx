@@ -97,7 +97,6 @@ describe("AnalyticsDashboard", () => {
     render(<AnalyticsDashboard />);
 
     // The component returns a Loader2 spinner when statsLoading is true
-    // which renders an SVG with the animate-spin class
     const spinner = document.querySelector(".animate-spin");
     expect(spinner).toBeInTheDocument();
 
@@ -124,7 +123,7 @@ describe("AnalyticsDashboard", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("ZMW 25,000")).toBeInTheDocument();
 
-    // Check descriptions
+    // Check sublabels (formerly descriptions) — StatCard renders these as sublabel
     expect(screen.getByText("120 active")).toBeInTheDocument();
     expect(screen.getByText("100 total")).toBeInTheDocument();
     expect(screen.getByText("45 total claims")).toBeInTheDocument();
@@ -156,5 +155,13 @@ describe("AnalyticsDashboard", () => {
     expect(screen.getByText("47%")).toBeInTheDocument();
     expect(screen.getByText("35%")).toBeInTheDocument();
     expect(screen.getByText("18%")).toBeInTheDocument();
+  });
+
+  it("should render 'Needs your attention' section with pending claims", () => {
+    setDefaultMocks();
+    render(<AnalyticsDashboard />);
+    expect(screen.getByText("Needs your attention")).toBeInTheDocument();
+    // Static attention items are always rendered
+    expect(screen.getByText(/CLM-001/)).toBeInTheDocument();
   });
 });

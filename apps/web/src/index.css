@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 @theme inline {
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-serif: 'Spectral', Georgia, serif;
+
   /* DEBS Insurance Design System - Colors */
   --color-background: #F7F9FC;
   --color-foreground: #1A202C;
@@ -13,6 +17,15 @@
 
   --color-primary: #0057B7;
   --color-primary-foreground: #ffffff;
+  --color-primary-600: #00489A;
+  --color-primary-700: #003A7D;
+  --color-primary-tint: #E8F1FA;
+  --color-primary-tint-2: #CFE2F5;
+
+  /* Brand accent — Zambian copper/amber */
+  --color-brand-accent: #DB8E2C;
+  --color-brand-accent-deep: #B26C16;
+  --color-brand-accent-tint: #FBEFDA;
 
   --color-secondary: #E8F1FA;
   --color-secondary-foreground: #0057B7;
@@ -28,9 +41,13 @@
 
   --color-success: #28A745;
   --color-success-foreground: #ffffff;
+  --color-success-tint: #E4F5E9;
 
-  --color-warning: #FFC107;
-  --color-warning-foreground: #1A202C;
+  --color-warning: #D9892A;
+  --color-warning-foreground: #ffffff;
+  --color-warning-tint: #FBEEDA;
+
+  --color-info-tint: #E8F1FA;
 
   --color-border: #CBD5E0;
   --color-input: #CBD5E0;
@@ -50,68 +67,77 @@
   /* Charts */
   --color-chart-1: #0057B7;
   --color-chart-2: #28A745;
-  --color-chart-3: #FFC107;
+  --color-chart-3: #D9892A;
   --color-chart-4: #DC3545;
   --color-chart-5: #64748B;
 
-  /* Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  /* Radius — V2 scale */
+  --radius-xs: 0.3125rem;   /* 5px */
+  --radius-sm: 0.4375rem;   /* 7px */
+  --radius-md: 0.5625rem;   /* 9px */
+  --radius-lg: 0.75rem;     /* 12px */
+  --radius-xl: 0.875rem;    /* 14px */
 }
 
 /* Dark mode */
 .dark {
-  --color-background: #0f172a;
-  --color-foreground: #f8fafc;
+  --color-background: #0d1829;
+  --color-foreground: #f1f5f9;
 
-  --color-card: #1e293b;
-  --color-card-foreground: #f8fafc;
+  --color-card: #1a2744;
+  --color-card-foreground: #f1f5f9;
 
-  --color-popover: #1e293b;
-  --color-popover-foreground: #f8fafc;
+  --color-popover: #1a2744;
+  --color-popover-foreground: #f1f5f9;
 
-  --color-primary: #3b82f6;
+  --color-primary: #4a90d9;
   --color-primary-foreground: #ffffff;
+  --color-primary-tint: #1a2e4a;
+  --color-primary-tint-2: #243858;
 
-  --color-secondary: #1e293b;
-  --color-secondary-foreground: #f8fafc;
+  --color-brand-accent: #E8A23E;
+  --color-brand-accent-deep: #D9892A;
+  --color-brand-accent-tint: #2a1f0a;
 
-  --color-muted: #1e293b;
+  --color-secondary: #1a2744;
+  --color-secondary-foreground: #f1f5f9;
+
+  --color-muted: #243858;
   --color-muted-foreground: #94a3b8;
 
-  --color-accent: #1e293b;
-  --color-accent-foreground: #f8fafc;
+  --color-accent: #1a2744;
+  --color-accent-foreground: #f1f5f9;
 
-  --color-destructive: #7f1d1d;
+  --color-destructive: #ef4444;
   --color-destructive-foreground: #f8fafc;
 
-  --color-success: #166534;
+  --color-success: #22c55e;
   --color-success-foreground: #ffffff;
+  --color-success-tint: #052e16;
 
-  --color-warning: #ca8a04;
-  --color-warning-foreground: #1A202C;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #0f172a;
+  --color-warning-tint: #1c1107;
 
-  --color-border: #1e293b;
-  --color-input: #334155;
-  --color-input-background: #1e293b;
-  --color-ring: #3b82f6;
+  --color-border: #243858;
+  --color-input: #2d4570;
+  --color-input-background: #1a2744;
+  --color-ring: #4a90d9;
   --color-switch-background: #334155;
 
   /* Sidebar - Dark */
-  --color-sidebar: #1e293b;
-  --color-sidebar-foreground: #f8fafc;
-  --color-sidebar-primary: #3b82f6;
+  --color-sidebar: #111e36;
+  --color-sidebar-foreground: #f1f5f9;
+  --color-sidebar-primary: #4a90d9;
   --color-sidebar-primary-foreground: #ffffff;
-  --color-sidebar-accent: #1e293b;
-  --color-sidebar-accent-foreground: #f8fafc;
-  --color-sidebar-border: #1e293b;
+  --color-sidebar-accent: #1a2744;
+  --color-sidebar-accent-foreground: #f1f5f9;
+  --color-sidebar-border: #243858;
 
   /* Charts - Dark */
-  --color-chart-1: #3b82f6;
+  --color-chart-1: #4a90d9;
   --color-chart-2: #22c55e;
-  --color-chart-3: #eab308;
+  --color-chart-3: #f59e0b;
   --color-chart-4: #ef4444;
   --color-chart-5: #6b7280;
 }
@@ -122,7 +148,35 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* Entrance animations */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes count-up {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.35s ease both;
+}
+
+/* Claims tracker connector line */
+.tracker-line {
+  height: 2px;
+  flex: 1;
+  background: var(--color-muted);
+  transition: background 0.3s;
+}
+.tracker-line.active {
+  background: var(--color-primary);
 }
 
 /* Animations for accordion and other components */
