@@ -159,10 +159,6 @@
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes count-up {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 
 .animate-fade-up {
   animation: fade-up 0.35s ease both;
@@ -178,6 +174,47 @@
 .tracker-line.active {
   background: var(--color-primary);
 }
+
+/* Landing page floating hero cards */
+@keyframes float-bob {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+.animate-float { animation: float-bob 5.5s ease-in-out infinite; }
+.animate-float-delayed { animation: float-bob 5.5s ease-in-out 1.4s infinite; }
+
+/* Landing page dot-grid hero pattern */
+.lp-dot-grid {
+  background-image: radial-gradient(circle, rgba(255,255,255,.18) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 40%, transparent 100%);
+}
+
+/* Feature card top accent line */
+.lp-feat-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-brand-accent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+  border-radius: 999px 999px 0 0;
+}
+.group:hover .lp-feat-line { transform: scaleX(1); }
+
+/* Article card image zoom */
+.lp-art-img {
+  transition: transform 0.45s ease;
+}
+.group:hover .lp-art-img { transform: scale(1.06); }
+
+/* Read more arrow slide */
+.lp-readmore-arrow {
+  transition: transform 0.2s ease;
+}
+.group:hover .lp-readmore-arrow { transform: translateX(4px); }
 
 /* Animations for accordion and other components */
 @keyframes accordion-down {
