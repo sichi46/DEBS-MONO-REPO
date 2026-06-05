@@ -5,18 +5,18 @@
   --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-serif: 'Spectral', Georgia, serif;
 
-  /* DEBS Insurance Design System - Colors */
+  /* ── Light mode — exact match to tokens.css ── */
   --color-background: #F7F9FC;
   --color-foreground: #1A202C;
 
-  --color-card: #ffffff;
+  --color-card: #FFFFFF;
   --color-card-foreground: #1A202C;
 
-  --color-popover: #ffffff;
+  --color-popover: #FFFFFF;
   --color-popover-foreground: #1A202C;
 
   --color-primary: #0057B7;
-  --color-primary-foreground: #ffffff;
+  --color-primary-foreground: #FFFFFF;
   --color-primary-600: #00489A;
   --color-primary-700: #003A7D;
   --color-primary-tint: #E8F1FA;
@@ -30,6 +30,7 @@
   --color-secondary: #E8F1FA;
   --color-secondary-foreground: #0057B7;
 
+  /* --border uses the reference "normal" border, not the strong one */
   --color-muted: #E2E8F0;
   --color-muted-foreground: #64748B;
 
@@ -47,16 +48,18 @@
   --color-warning-foreground: #ffffff;
   --color-warning-tint: #FBEEDA;
 
+  --color-danger-tint: #FBE6E8;
   --color-info-tint: #E8F1FA;
 
-  --color-border: #CBD5E0;
+  /* Reference --border: #E2E8F0 (normal), --border-strong: #CBD5E0 */
+  --color-border: #E2E8F0;
   --color-input: #CBD5E0;
   --color-input-background: #ffffff;
   --color-ring: #0057B7;
   --color-switch-background: #CBD5E0;
 
   /* Sidebar */
-  --color-sidebar: #ffffff;
+  --color-sidebar: #FFFFFF;
   --color-sidebar-foreground: #1A202C;
   --color-sidebar-primary: #0057B7;
   --color-sidebar-primary-foreground: #ffffff;
@@ -79,67 +82,69 @@
   --radius-xl: 0.875rem;    /* 14px */
 }
 
-/* Dark mode */
+/* ── Dark mode — exact match to tokens.css dark values ── */
 .dark {
-  --color-background: #0d1829;
-  --color-foreground: #f1f5f9;
+  --color-background: #070E1A;
+  --color-foreground: #E9F0FB;
 
-  --color-card: #1a2744;
-  --color-card-foreground: #f1f5f9;
+  --color-card: #111E33;
+  --color-card-foreground: #E9F0FB;
 
-  --color-popover: #1a2744;
-  --color-popover-foreground: #f1f5f9;
+  --color-popover: #111E33;
+  --color-popover-foreground: #E9F0FB;
 
-  --color-primary: #4a90d9;
-  --color-primary-foreground: #ffffff;
-  --color-primary-tint: #1a2e4a;
-  --color-primary-tint-2: #243858;
+  --color-primary: #4F90F2;
+  --color-primary-foreground: #06182F;
+  --color-primary-600: #6AA1F4;
+  --color-primary-700: #87B4F7;
+  --color-primary-tint: #15294A;
+  --color-primary-tint-2: #1D365C;
 
-  --color-brand-accent: #E8A23E;
-  --color-brand-accent-deep: #D9892A;
-  --color-brand-accent-tint: #2a1f0a;
+  --color-brand-accent: #EFA948;
+  --color-brand-accent-deep: #F2B968;
+  --color-brand-accent-tint: #382915;
 
-  --color-secondary: #1a2744;
-  --color-secondary-foreground: #f1f5f9;
+  --color-secondary: #15294A;
+  --color-secondary-foreground: #E9F0FB;
 
-  --color-muted: #243858;
-  --color-muted-foreground: #94a3b8;
+  --color-muted: #1D365C;
+  --color-muted-foreground: #9DAEC9;
 
-  --color-accent: #1a2744;
-  --color-accent-foreground: #f1f5f9;
+  --color-accent: #15294A;
+  --color-accent-foreground: #E9F0FB;
 
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #f8fafc;
+  --color-destructive: #F0685C;
+  --color-destructive-foreground: #ffffff;
 
-  --color-success: #22c55e;
+  --color-success: #3CC07C;
   --color-success-foreground: #ffffff;
-  --color-success-tint: #052e16;
+  --color-success-tint: #15301F;
 
-  --color-warning: #f59e0b;
-  --color-warning-foreground: #0f172a;
-  --color-warning-tint: #1c1107;
+  --color-warning: #EFA948;
+  --color-warning-foreground: #06182F;
+  --color-warning-tint: #382915;
 
-  --color-border: #243858;
-  --color-input: #2d4570;
-  --color-input-background: #1a2744;
-  --color-ring: #4a90d9;
-  --color-switch-background: #334155;
+  --color-border: #233249;
+  --color-input: #31435E;
+  --color-input-background: #111E33;
+  --color-ring: #4F90F2;
+  --color-switch-background: #31435E;
 
   /* Sidebar - Dark */
-  --color-sidebar: #111e36;
-  --color-sidebar-foreground: #f1f5f9;
-  --color-sidebar-primary: #4a90d9;
-  --color-sidebar-primary-foreground: #ffffff;
-  --color-sidebar-accent: #1a2744;
-  --color-sidebar-accent-foreground: #f1f5f9;
-  --color-sidebar-border: #243858;
+  --color-sidebar: #111E33;
+  --color-sidebar-foreground: #E9F0FB;
+  --color-sidebar-primary: #4F90F2;
+  --color-sidebar-primary-foreground: #06182F;
+  --color-sidebar-accent: #15294A;
+  --color-sidebar-accent-foreground: #E9F0FB;
+  --color-sidebar-border: #233249;
 
   /* Charts - Dark */
-  --color-chart-1: #4a90d9;
-  --color-chart-2: #22c55e;
-  --color-chart-3: #f59e0b;
-  --color-chart-4: #ef4444;
-  --color-chart-5: #6b7280;
+  --color-chart-1: #4F90F2;
+  --color-chart-2: #3CC07C;
+  --color-chart-3: #EFA948;
+  --color-chart-4: #F0685C;
+  --color-chart-5: #647697;
 }
 
 @layer base {
@@ -181,14 +186,15 @@
   50%  { transform: translateY(-10px); }
   100% { transform: translateY(0px); }
 }
-.animate-float { animation: float-bob 5.5s ease-in-out infinite; }
+.animate-float         { animation: float-bob 5.5s ease-in-out infinite; }
 .animate-float-delayed { animation: float-bob 5.5s ease-in-out 1.4s infinite; }
 
-/* Landing page dot-grid hero pattern */
+/* Landing page dot-grid hero pattern — exact spec values */
 .lp-dot-grid {
-  background-image: radial-gradient(circle, rgba(255,255,255,.18) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 40%, transparent 100%);
+  background-image: radial-gradient(rgba(255,255,255,.14) 1px, transparent 1.4px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(78% 75% at 55% 18%, #000, transparent 78%);
+  opacity: .5;
 }
 
 /* Feature card top accent line */
@@ -196,23 +202,22 @@
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-brand-accent));
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.3s ease;
+  transition: transform 0.35s cubic-bezier(.2,.8,.2,1);
   border-radius: 999px 999px 0 0;
 }
 .group:hover .lp-feat-line { transform: scaleX(1); }
 
 /* Article card image zoom */
 .lp-art-img {
-  transition: transform 0.45s ease;
+  transition: transform 0.55s cubic-bezier(.2,.8,.2,1);
 }
 .group:hover .lp-art-img { transform: scale(1.06); }
 
 /* Read more arrow slide */
 .lp-readmore-arrow {
-  transition: transform 0.2s ease;
+  transition: transform 0.2s cubic-bezier(.2,.8,.2,1);
 }
 .group:hover .lp-readmore-arrow { transform: translateX(4px); }
 

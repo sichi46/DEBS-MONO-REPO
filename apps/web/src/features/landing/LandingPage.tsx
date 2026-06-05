@@ -12,6 +12,7 @@ import {
   FileCheck,
   Star,
 } from "lucide-react";
+import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 /* ─── DebsMark SVG logo mark ─── */
 function DebsMark({
@@ -80,28 +81,33 @@ const articleGradients = [
   "linear-gradient(135deg,#E7A24A,#B26C16)",
 ];
 
+// Per-card accent colors match spec: primary / success / copper / primary (info)
 const features = [
   {
     icon: Shield,
-    accentColor: "var(--color-primary)",
+    accentColor: "#0057B7", // primary blue
+    barColor: "#0057B7",
     title: "Comprehensive cover",
     body: "Life, health, auto, home & more — all managed from one place.",
   },
   {
     icon: Wallet,
-    accentColor: "var(--color-success)",
+    accentColor: "#28A745", // success green
+    barColor: "#28A745",
     title: "Easy Mobile Money",
     body: "Pay premiums in seconds. Smart reminders mean you never miss one.",
   },
   {
     icon: FileCheck,
-    accentColor: "var(--color-brand-accent)",
+    accentColor: "#DB8E2C", // copper/accent
+    barColor: "#DB8E2C",
     title: "Guided claims",
     body: "A step-by-step flow, with most claims settled in just five days.",
   },
   {
     icon: TrendingUp,
-    accentColor: "var(--color-primary)",
+    accentColor: "#0057B7", // info = primary blue
+    barColor: "#0057B7",
     title: "Grow your wealth",
     body: "Investment-linked plans that build your family's future.",
   },
@@ -156,9 +162,9 @@ export function LandingPage() {
         className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
         style={{
           background: scrolled
-            ? "color-mix(in srgb, var(--color-card) 92%, transparent)"
+            ? "color-mix(in srgb, var(--color-card) 86%, transparent)"
             : "transparent",
-          backdropFilter: scrolled ? "blur(12px)" : "none",
+          backdropFilter: scrolled ? "blur(14px)" : "none",
           borderBottom: scrolled
             ? "1px solid var(--color-border)"
             : "1px solid transparent",
@@ -319,25 +325,21 @@ export function LandingPage() {
 
           {/* Right — image placeholder with floating cards */}
           <div className="relative hidden lg:block">
-            {/* Main image placeholder */}
+            {/* Hero image */}
             <div
               className="relative overflow-hidden"
               style={{
                 aspectRatio: "4/3",
                 borderRadius: 22,
-                background: "rgba(255,255,255,.1)",
-                border: "1px solid rgba(255,255,255,.22)",
                 boxShadow: "0 34px 70px rgba(0,0,0,.4)",
-                display: "grid",
-                placeItems: "center",
+                border: "1px solid rgba(255,255,255,.22)",
               }}
             >
-              <div className="text-center opacity-60">
-                <div className="text-4xl mb-2">👨‍👩‍👧‍👦</div>
-                <p className="text-xs font-bold uppercase tracking-widest">
-                  Zambian family photo
-                </p>
-              </div>
+              <ImageWithFallback
+                src="https://images.unsplash.com/photo-1609843502380-e39ddeaff979?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFtaWx5JTIwc2VjdXJpdHl8ZW58MXx8fHwxNzYwODMxMjE2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                alt="Zambian family"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             {/* Floating card 1 — top left */}
@@ -409,7 +411,10 @@ export function LandingPage() {
       <section id="features" className="py-20 bg-background">
         <div className="max-w-[1180px] mx-auto px-7">
           <div className="text-center mb-10">
-            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary mb-3">
+            <p
+              className="text-[11px] font-bold uppercase tracking-[.14em] mb-3"
+              style={{ color: "var(--color-brand-accent-deep)" }}
+            >
               Everything you need
             </p>
             <h2
@@ -428,8 +433,11 @@ export function LandingPage() {
                   key={i}
                   className="group relative bg-card border border-border rounded-2xl p-[22px] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg cursor-default"
                 >
-                  {/* Top accent line */}
-                  <div className="lp-feat-line" />
+                  {/* Top accent line — per-card color from spec */}
+                  <div
+                    className="lp-feat-line"
+                    style={{ background: f.barColor }}
+                  />
 
                   {/* Icon chip */}
                   <div
@@ -470,7 +478,10 @@ export function LandingPage() {
       >
         <div className="max-w-[1180px] mx-auto px-7">
           <div className="text-center mb-10">
-            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary mb-3">
+            <p
+              className="text-[11px] font-bold uppercase tracking-[.14em] mb-3"
+              style={{ color: "var(--color-brand-accent-deep)" }}
+            >
               What our customers say
             </p>
             <h2
@@ -527,7 +538,10 @@ export function LandingPage() {
       >
         <div className="max-w-[1180px] mx-auto px-7">
           <div className="text-center mb-10">
-            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary mb-3">
+            <p
+              className="text-[11px] font-bold uppercase tracking-[.14em] mb-3"
+              style={{ color: "var(--color-brand-accent-deep)" }}
+            >
               Knowledge Hub
             </p>
             <h2
