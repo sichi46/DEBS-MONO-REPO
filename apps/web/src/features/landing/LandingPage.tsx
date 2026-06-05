@@ -170,15 +170,15 @@ export function LandingPage() {
             : "1px solid transparent",
         }}
       >
-        <div className="max-w-[1180px] mx-auto px-7 flex items-center justify-between h-[66px]">
+        <div className="max-w-[1180px] mx-auto px-4 md:px-7 flex items-center justify-between h-[66px]">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0">
             <DebsMark size={30} />
             <span
-              className="text-[17px] font-extrabold tracking-tight text-foreground"
+              className={`text-[17px] font-extrabold tracking-tight whitespace-nowrap transition-colors ${scrolled ? "text-foreground" : "text-white"}`}
               style={{ letterSpacing: "-0.02em" }}
             >
-              Debs <span className="text-primary">Insurance</span>
+              Debs <span className="text-brand-accent">Insurance</span>
             </span>
           </Link>
 
@@ -188,7 +188,7 @@ export function LandingPage() {
               <a
                 key={l}
                 href={`#${l.toLowerCase()}`}
-                className="relative text-[14.5px] font-semibold text-muted-foreground hover:text-foreground transition-colors py-1 group"
+                className={`relative text-[14.5px] font-semibold transition-colors py-1 group ${scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/80 hover:text-white"}`}
               >
                 {l}
                 <span className="absolute bottom-0 left-0 w-full h-[2px] rounded-full bg-brand-accent scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-200" />
@@ -197,16 +197,16 @@ export function LandingPage() {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 md:gap-2.5">
             <Link
               to="/login"
-              className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5"
+              className={`hidden sm:block text-sm font-semibold transition-colors px-3 py-1.5 ${scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/80 hover:text-white"}`}
             >
               Log in
             </Link>
             <Link
               to="/register"
-              className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-lg transition-all"
+              className="inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg transition-all"
               style={{ background: "var(--color-brand-accent)", color: "#fff" }}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.background =
@@ -264,10 +264,10 @@ export function LandingPage() {
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-wrap gap-3 mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <Link
                 to="/register"
-                className="inline-flex items-center gap-2 font-bold text-base px-6 py-[15px] rounded-lg transition-all"
+                className="inline-flex items-center justify-center gap-2 font-bold text-base px-6 py-[15px] rounded-lg transition-all"
                 style={{
                   background: "var(--color-brand-accent)",
                   color: "#fff",
@@ -285,7 +285,7 @@ export function LandingPage() {
               </Link>
               <Link
                 to="/login"
-                className="inline-flex items-center font-bold text-base px-6 py-[15px] rounded-lg transition-all"
+                className="inline-flex items-center justify-center font-bold text-base px-6 py-[15px] rounded-lg transition-all"
                 style={{
                   border: "1px solid rgba(255,255,255,.4)",
                   background: "rgba(255,255,255,.08)",
@@ -388,11 +388,11 @@ export function LandingPage() {
       {/* ── Stats ── */}
       <section className="border-b border-border bg-card">
         <div className="max-w-[1180px] mx-auto px-7 py-10">
-          <div className="grid grid-cols-3 gap-6 text-center divide-x divide-border">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 text-center divide-y sm:divide-y-0 sm:divide-x divide-border">
             {stats.map((s) => (
-              <div key={s.label} className="px-4">
+              <div key={s.label} className="px-4 py-6 sm:py-0">
                 <p
-                  className="text-[46px] font-semibold leading-none text-primary"
+                  className="text-[clamp(32px,8vw,46px)] font-semibold leading-none text-primary"
                   style={{
                     fontFamily: "var(--font-serif)",
                     fontFeatureSettings: '"tnum"',
