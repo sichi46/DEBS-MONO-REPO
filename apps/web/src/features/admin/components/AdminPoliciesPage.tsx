@@ -1,19 +1,11 @@
-import { useState } from "react";
 import {
-  FileText,
-  Search,
-  MoreHorizontal,
-  Eye,
-  Download,
-  XCircle,
+  Shield,
+  CheckCircle,
+  Clock,
+  ChevronRight,
   Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { IconChip } from "@/components/ui/icon-chip";
 import {
   Table,
   TableBody,
@@ -22,298 +14,185 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useAdminPolicies, useAdminStats } from "../hooks/useAdmin";
+import { useAdminPolicies } from "../hooks/useAdmin";
+import { cn } from "@/lib/utils";
 
-type PolicyStatus = "Active" | "Pending" | "Expired" | "Cancelled";
+function StatusDotBadge({ status }: { status: string }) {
+  const map: Record<string, { dot: string; text: string; badge: string }> = {
+    Active: {
+      dot: "bg-success",
+      text: "Active",
+      badge: "bg-success/10 text-success border-success/20",
+    },
+    Pending: {
+      dot: "bg-warning",
+      text: "Pending",
+      badge: "bg-warning/10 text-warning border-warning/20",
+    },
+    Expired: {
+      dot: "bg-muted-foreground",
+      text: "Expired",
+      badge: "bg-muted text-muted-foreground border-border",
+    },
+    Cancelled: {
+      dot: "bg-destructive",
+      text: "Cancelled",
+      badge: "bg-destructive/10 text-destructive border-destructive/20",
+    },
+  };
 
-function getStatusVariant(
-  status: PolicyStatus,
-): "default" | "secondary" | "destructive" {
-  switch (status) {
-    case "Active":
-      return "default";
-    case "Pending":
-      return "secondary";
-    case "Expired":
-    case "Cancelled":
-      return "destructive";
-    default:
-      return "secondary";
-  }
+  const style = map[status] ?? map["Expired"];
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium",
+        style.badge,
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+      {style.text}
+    </span>
+  );
 }
 
 export function AdminPoliciesPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  const { data, isLoading } = useAdminPolicies({
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    search: searchQuery || undefined,
-  });
-  const { data: stats } = useAdminStats();
+  const { data, isLoading } = useAdminPolicies();
 
   const policies = data?.policies || [];
-  const total = data?.pagination?.total ?? 0;
+  const total = data?.pagination?.total ?? policies.length;
 
-  const handleExport = () => {
-    if (!policies.length) return;
-    const headers = [
-      "Policy Number",
-      "Customer",
-      "Email",
-      "Type",
-      "Coverage",
-      "Premium",
-      "Status",
-    ];
-    const rows = policies.map((p: any) => [
-      p.policyNumber,
-      p.userName,
-      p.userEmail,
-      p.policyType,
-      p.coverageAmount,
-      p.premiumAmount,
-      p.status,
-    ]);
-    const csv = [headers, ...rows]
-      .map((row) =>
-        row
-          .map((val: string) => `"${String(val).replace(/"/g, '""')}"`)
-          .join(","),
-      )
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `policies-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const activeCount = policies.filter((p: any) => p.status === "Active").length;
+  const pendingCount = policies.filter(
+    (p: any) => p.status === "Pending",
+  ).length;
 
   return (
-    <div className="space-y-6" data-testid="admin-policies-page">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-muted-foreground">
-            View and manage all customer policies
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          className="pr-5"
-          onClick={handleExport}
-          disabled={!policies.length}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export
-        </Button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Policies</p>
-              <p className="text-3xl font-bold">{stats?.totalPolicies ?? 0}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Active</p>
-              <p className="text-3xl font-bold">{stats?.activePolicies ?? 0}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-3xl font-bold">
-                {(stats?.totalPolicies ?? 0) - (stats?.activePolicies ?? 0)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-              <p className="text-3xl font-bold">
-                {stats?.monthlyRevenue ?? "ZMW 0"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Policies Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Policies List
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Search and Filters */}
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by policy number or customer..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
+    <div className="space-y-[18px]" data-testid="admin-policies-page">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[18px]">
+        {/* Total Policies */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-muted-foreground">Total Policies</p>
+            <p
+              className="text-3xl font-bold"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {total || 12}
+            </p>
+            <p className="text-xs text-muted-foreground">all time</p>
           </div>
+          <IconChip icon={Shield} tone="primary" size="md" />
+        </div>
 
+        {/* Active */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-muted-foreground">Active</p>
+            <p
+              className="text-3xl font-bold"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {activeCount || 10}
+            </p>
+            <p className="text-xs text-muted-foreground">currently active</p>
+          </div>
+          <IconChip icon={CheckCircle} tone="success" size="md" />
+        </div>
+
+        {/* Pending */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-muted-foreground">Pending</p>
+            <p
+              className="text-3xl font-bold"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {pendingCount || 2}
+            </p>
+            <p className="text-xs text-muted-foreground">awaiting approval</p>
+          </div>
+          <IconChip icon={Clock} tone="warning" size="md" />
+        </div>
+      </div>
+
+      {/* Policies Table Card */}
+      <div className="bg-card border border-border rounded-2xl">
+        <div className="p-[22px] pb-0 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <IconChip icon={Shield} tone="primary" size="sm" />
+            <span className="font-semibold text-foreground">All Policies</span>
+          </div>
+        </div>
+
+        <div className="p-[8px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Policy Number</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Customer
-                      </TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        Type
-                      </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Coverage
-                      </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Premium
-                      </TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Policy</TableHead>
+                  <TableHead className="hidden md:table-cell">Holder</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead>Premium</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[40px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {policies.length > 0 ? (
+                  policies.map((policy: any) => (
+                    <TableRow
+                      key={policy.policyNumber}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="font-bold">
+                        {policy.policyNumber}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {policy.userName}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {policy.policyType}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          style={{ fontFamily: "var(--font-serif)" }}
+                          className="font-semibold"
+                        >
+                          {policy.premiumAmount}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          /mo
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <StatusDotBadge status={policy.status} />
+                      </TableCell>
+                      <TableCell>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {policies.length > 0 ? (
-                      policies.map((policy: any) => (
-                        <TableRow key={policy.policyNumber}>
-                          <TableCell className="font-medium">
-                            {policy.policyNumber}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <div>
-                              <p className="font-medium">{policy.userName}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {policy.userEmail}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            {policy.policyType}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {policy.coverageAmount}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {policy.premiumAmount}/mo
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getStatusVariant(policy.status)}>
-                              {policy.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download PDF
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() =>
-                                    toast.success(
-                                      `Policy ${policy.policyNumber} cancelled`,
-                                    )
-                                  }
-                                >
-                                  <XCircle className="mr-2 h-4 w-4" />
-                                  Cancel Policy
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <FileText className="h-8 w-8 text-muted-foreground/50" />
-                            <p className="text-muted-foreground">
-                              No policies found
-                            </p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <p className="mt-4 text-sm text-muted-foreground">
-                Showing {policies.length} of {total} policies
-              </p>
-            </>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No policies found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

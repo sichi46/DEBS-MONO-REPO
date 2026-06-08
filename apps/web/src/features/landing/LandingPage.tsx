@@ -1,16 +1,13 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CheckCircle,
-  Phone,
-  Mail,
-  MapPin,
   Shield,
   Wallet,
   TrendingUp,
   FileCheck,
-  Star,
+  FileText,
 } from "lucide-react";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
@@ -75,38 +72,146 @@ function DebsMark({
   );
 }
 
+/* ─── Scroll-reveal wrapper ─── */
+function Reveal({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add("in-view");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`reveal ${className}`}
+      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ─── CountUp hook ─── */
+function useCountUp(target: number, started: boolean, duration = 1500): number {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!started) return;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(target * eased);
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setValue(target);
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [started, target, duration]);
+
+  return value;
+}
+
+/* ─── Animated stat item ─── */
+const statDefs = [
+  { prefix: "ZMW ", to: 2, suffix: "B+", label: "Claims paid out" },
+  { prefix: "", to: 10000, suffix: "+", label: "Families protected" },
+  { prefix: "", to: 98, suffix: "%", label: "Claims approved" },
+];
+
+function StatItem({
+  def,
+  started,
+}: {
+  def: (typeof statDefs)[number];
+  started: boolean;
+}) {
+  const raw = useCountUp(def.to, started);
+
+  const formatted =
+    def.to >= 1000
+      ? Math.round(raw).toLocaleString()
+      : def.to < 10
+        ? raw.toFixed(1).replace(/\.0$/, "")
+        : Math.round(raw).toString();
+
+  return (
+    <div className="px-4 py-6 sm:py-0">
+      <p
+        className="text-[clamp(32px,8vw,46px)] font-semibold leading-none text-primary"
+        style={{
+          fontFamily: "var(--font-serif)",
+          fontFeatureSettings: '"tnum"',
+        }}
+      >
+        {def.prefix}
+        {formatted}
+        {def.suffix}
+      </p>
+      <p className="text-sm text-muted-foreground mt-2">{def.label}</p>
+    </div>
+  );
+}
+
 const articleGradients = [
   "linear-gradient(135deg,#3E83DA,#0057B7)",
   "linear-gradient(135deg,#34B978,#157A45)",
   "linear-gradient(135deg,#E7A24A,#B26C16)",
 ];
 
-// Per-card accent colors match spec: primary / success / copper / primary (info)
 const features = [
   {
     icon: Shield,
-    accentColor: "#0057B7", // primary blue
+    accentColor: "#0057B7",
     barColor: "#0057B7",
     title: "Comprehensive cover",
     body: "Life, health, auto, home & more — all managed from one place.",
   },
   {
     icon: Wallet,
-    accentColor: "#28A745", // success green
+    accentColor: "#28A745",
     barColor: "#28A745",
     title: "Easy Mobile Money",
     body: "Pay premiums in seconds. Smart reminders mean you never miss one.",
   },
   {
     icon: FileCheck,
-    accentColor: "#DB8E2C", // copper/accent
+    accentColor: "#DB8E2C",
     barColor: "#DB8E2C",
     title: "Guided claims",
     body: "A step-by-step flow, with most claims settled in just five days.",
   },
   {
     icon: TrendingUp,
-    accentColor: "#0057B7", // info = primary blue
+    accentColor: "#0057B7",
     barColor: "#0057B7",
     title: "Grow your wealth",
     body: "Investment-linked plans that build your family's future.",
@@ -119,40 +224,32 @@ const articles = [
   { title: "How to file an insurance claim", date: "Oct 5, 2025" },
 ];
 
-const stats = [
-  { value: "ZMW 2B+", label: "Claims paid out" },
-  { value: "10,000+", label: "Families protected" },
-  { value: "98%", label: "Claims approved" },
-];
-
-const testimonials = [
-  {
-    quote:
-      "Filing my claim was so easy. Within 4 days I received my payout. Debs has given my family real peace of mind.",
-    name: "Grace M.",
-    role: "Life Insurance policyholder, Lusaka",
-  },
-  {
-    quote:
-      "I can see all my policies in one place and pay my premiums from my phone. Finally, insurance that works for me.",
-    name: "Chanda K.",
-    role: "Health & Auto customer, Ndola",
-  },
-  {
-    quote:
-      "The team was helpful and transparent throughout. No hidden fees, no surprises — exactly what I needed.",
-    name: "Mwale B.",
-    role: "Home Insurance customer, Kitwe",
-  },
-];
-
 export function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const [statsStarted, setStatsStarted] = useState(false);
+  const statsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 28);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Start CountUp when stats section scrolls into view
+  useEffect(() => {
+    const el = statsRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStatsStarted(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -175,10 +272,21 @@ export function LandingPage() {
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
             <DebsMark size={30} />
             <span
-              className={`text-[17px] font-extrabold tracking-tight whitespace-nowrap transition-colors ${scrolled ? "text-foreground" : "text-white"}`}
-              style={{ letterSpacing: "-0.02em" }}
+              className="text-[17px] font-extrabold tracking-tight whitespace-nowrap transition-colors"
+              style={{
+                letterSpacing: "-0.02em",
+                color: scrolled ? "var(--color-foreground)" : "#fff",
+              }}
             >
-              Debs <span className="text-brand-accent">Insurance</span>
+              Debs{" "}
+              <span
+                style={{
+                  color: scrolled ? "var(--color-primary)" : "#EFB35E",
+                  transition: "color 0.3s",
+                }}
+              >
+                Insurance
+              </span>
             </span>
           </Link>
 
@@ -241,16 +349,16 @@ export function LandingPage() {
         </div>
 
         <div className="relative max-w-[1180px] mx-auto px-7 py-[104px] pb-[110px] grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-          {/* Left */}
+          {/* Left — animated */}
           <div>
             <p
-              className="text-[11px] font-bold uppercase tracking-[.14em] mb-4"
+              className="hero-anim text-[11px] font-bold uppercase tracking-[.14em] mb-4"
               style={{ color: "#EFB35E" }}
             >
               Zambian. Trusted. Yours.
             </p>
             <h1
-              className="text-[clamp(40px,5.2vw,60px)] font-semibold leading-[1.04] mb-5"
+              className="hero-anim hero-anim-delay-1 text-[clamp(40px,5.2vw,60px)] font-semibold leading-[1.04] mb-5"
               style={{ fontFamily: "var(--font-serif)" }}
             >
               Secure Your Future,{" "}
@@ -258,13 +366,13 @@ export function LandingPage() {
                 Simply.
               </span>
             </h1>
-            <p className="text-[17.5px] opacity-90 leading-relaxed max-w-[460px] mb-8">
+            <p className="hero-anim hero-anim-delay-2 text-[17.5px] opacity-90 leading-relaxed max-w-[460px] mb-8">
               The modern, transparent way for Zambian families to manage
               insurance and investments — all in one place.
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-8">
+            <div className="hero-anim hero-anim-delay-3 flex flex-col sm:flex-row gap-3 mb-8">
               <Link
                 to="/register"
                 className="inline-flex items-center justify-center gap-2 font-bold text-base px-6 py-[15px] rounded-lg transition-all"
@@ -303,7 +411,7 @@ export function LandingPage() {
             </div>
 
             {/* Trust badges */}
-            <div className="flex flex-wrap gap-5">
+            <div className="hero-anim hero-anim-delay-4 flex flex-wrap gap-5">
               {[
                 "Regulated by PIA",
                 "Bank-level security",
@@ -387,21 +495,10 @@ export function LandingPage() {
 
       {/* ── Stats ── */}
       <section className="border-b border-border bg-card">
-        <div className="max-w-[1180px] mx-auto px-7 py-10">
+        <div className="max-w-[1180px] mx-auto px-7 py-10" ref={statsRef}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 text-center divide-y sm:divide-y-0 sm:divide-x divide-border">
-            {stats.map((s) => (
-              <div key={s.label} className="px-4 py-6 sm:py-0">
-                <p
-                  className="text-[clamp(32px,8vw,46px)] font-semibold leading-none text-primary"
-                  style={{
-                    fontFamily: "var(--font-serif)",
-                    fontFeatureSettings: '"tnum"',
-                  }}
-                >
-                  {s.value}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">{s.label}</p>
-              </div>
+            {statDefs.map((def) => (
+              <StatItem key={def.label} def={def} started={statsStarted} />
             ))}
           </div>
         </div>
@@ -410,7 +507,7 @@ export function LandingPage() {
       {/* ── Features ── */}
       <section id="features" className="py-20 bg-background">
         <div className="max-w-[1180px] mx-auto px-7">
-          <div className="text-center mb-10">
+          <Reveal className="text-center mb-10">
             <p
               className="text-[11px] font-bold uppercase tracking-[.14em] mb-3"
               style={{ color: "var(--color-brand-accent-deep)" }}
@@ -423,109 +520,58 @@ export function LandingPage() {
             >
               Built around your family
             </h2>
-          </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[18px]">
             {features.map((f, i) => {
               const Icon = f.icon;
               return (
-                <div
-                  key={i}
-                  className="group relative bg-card border border-border rounded-2xl p-[22px] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg cursor-default"
-                >
-                  {/* Top accent line — per-card color from spec */}
-                  <div
-                    className="lp-feat-line"
-                    style={{ background: f.barColor }}
-                  />
-
-                  {/* Icon chip */}
-                  <div
-                    className="w-fit mb-[15px] p-3 rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                    style={{
-                      background: `color-mix(in srgb, ${f.accentColor} 12%, transparent)`,
-                    }}
-                  >
-                    <Icon
-                      className="h-6 w-6"
-                      style={{ color: f.accentColor }}
+                <Reveal key={i} delay={i * 80}>
+                  <div className="group relative bg-card border border-border rounded-2xl p-[22px] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg cursor-default h-full">
+                    {/* Top accent line */}
+                    <div
+                      className="lp-feat-line"
+                      style={{ background: f.barColor }}
                     />
-                  </div>
 
-                  <p className="font-bold text-[15px] text-foreground mb-2">
-                    {f.title}
-                  </p>
-                  <p className="text-[13.5px] text-muted-foreground leading-relaxed">
-                    {f.body}
-                  </p>
+                    {/* Icon chip — rotate -5deg on hover */}
+                    <div
+                      className="w-fit mb-[15px] p-3 rounded-xl transition-transform duration-300 group-hover:scale-110"
+                      style={{
+                        background: `color-mix(in srgb, ${f.accentColor} 12%, transparent)`,
+                        transition: "transform 0.3s ease, rotate 0.3s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.transform =
+                          "scale(1.1) rotate(-5deg)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.transform =
+                          "scale(1) rotate(0deg)";
+                      }}
+                    >
+                      <Icon
+                        className="h-6 w-6"
+                        style={{ color: f.accentColor }}
+                      />
+                    </div>
 
-                  {/* Learn more — reveals on hover */}
-                  <div className="flex items-center gap-1.5 mt-4 text-[13px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    Learn more
-                    <ArrowRight className="lp-readmore-arrow h-3.5 w-3.5" />
+                    <p className="font-bold text-[15px] text-foreground mb-2">
+                      {f.title}
+                    </p>
+                    <p className="text-[13.5px] text-muted-foreground leading-relaxed">
+                      {f.body}
+                    </p>
+
+                    {/* Learn more — reveals on hover */}
+                    <div className="flex items-center gap-1.5 mt-4 text-[13px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      Learn more
+                      <ArrowRight className="lp-readmore-arrow h-3.5 w-3.5" />
+                    </div>
                   </div>
-                </div>
+                </Reveal>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section
-        className="py-20"
-        style={{ background: "var(--color-primary-tint)" }}
-      >
-        <div className="max-w-[1180px] mx-auto px-7">
-          <div className="text-center mb-10">
-            <p
-              className="text-[11px] font-bold uppercase tracking-[.14em] mb-3"
-              style={{ color: "var(--color-brand-accent-deep)" }}
-            >
-              What our customers say
-            </p>
-            <h2
-              className="text-[clamp(24px,3vw,32px)] font-semibold text-foreground"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
-              Trusted by Zambian families
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="bg-card border border-border rounded-2xl p-6"
-              >
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: 5 }).map((_, s) => (
-                    <Star
-                      key={s}
-                      className="h-4 w-4"
-                      style={{
-                        fill: "var(--color-brand-accent)",
-                        color: "var(--color-brand-accent)",
-                      }}
-                    />
-                  ))}
-                </div>
-                <p
-                  className="text-sm text-muted-foreground leading-relaxed italic mb-5"
-                  style={{ fontFamily: "var(--font-serif)" }}
-                >
-                  "{t.quote}"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -537,7 +583,7 @@ export function LandingPage() {
         style={{ background: "var(--color-card)" }}
       >
         <div className="max-w-[1180px] mx-auto px-7">
-          <div className="text-center mb-10">
+          <Reveal className="text-center mb-10">
             <p
               className="text-[11px] font-bold uppercase tracking-[.14em] mb-3"
               style={{ color: "var(--color-brand-accent-deep)" }}
@@ -550,97 +596,113 @@ export function LandingPage() {
             >
               Learn about financial planning
             </h2>
-          </div>
+          </Reveal>
 
           <div className="grid md:grid-cols-3 gap-5">
             {articles.map((a, i) => (
-              <div
-                key={i}
-                className="group bg-background border border-border rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg"
-              >
-                {/* Gradient image area */}
-                <div
-                  className="overflow-hidden"
-                  style={{ aspectRatio: "16/9" }}
-                >
+              <Reveal key={i} delay={i * 100}>
+                <div className="group bg-background border border-border rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg h-full">
+                  {/* Article image area */}
                   <div
-                    className="lp-art-img w-full h-full flex items-center justify-center"
-                    style={{
-                      background: articleGradients[i],
-                      aspectRatio: "16/9",
-                    }}
+                    className="overflow-hidden"
+                    style={{ aspectRatio: "16/9" }}
                   >
-                    <span className="text-3xl opacity-50">📄</span>
+                    <div
+                      className="lp-art-img w-full h-full flex flex-col items-center justify-center gap-2 group-hover:scale-[1.06] transition-transform duration-500"
+                      style={{
+                        background: articleGradients[i],
+                        aspectRatio: "16/9",
+                      }}
+                    >
+                      <FileText
+                        className="h-7 w-7"
+                        style={{ color: "rgba(255,255,255,0.6)" }}
+                      />
+                      <span
+                        className="text-white/60 font-bold uppercase tracking-widest"
+                        style={{ fontSize: 11 }}
+                      >
+                        ARTICLE IMAGE
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Content */}
-                <div className="p-[18px]">
-                  <p className="text-[11.5px] font-semibold text-muted-foreground mb-1.5">
-                    {a.date}
-                  </p>
-                  <p className="text-[15.5px] font-bold text-foreground leading-snug mb-3">
-                    {a.title}
-                  </p>
-                  <div className="flex items-center gap-1.5 text-[13px] font-bold text-primary">
-                    Read more
-                    <ArrowRight className="lp-readmore-arrow h-3.5 w-3.5" />
+                  {/* Content */}
+                  <div className="p-[18px]">
+                    <p className="text-[11.5px] font-semibold text-muted-foreground mb-1.5">
+                      {a.date}
+                    </p>
+                    <p className="text-[15.5px] font-bold text-foreground leading-snug mb-3">
+                      {a.title}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[13px] font-bold text-primary">
+                      Read more
+                      <ArrowRight className="lp-readmore-arrow h-3.5 w-3.5" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-20 px-7 relative overflow-hidden text-white">
-        {/* Same radial gradient as hero */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(125% 130% at 80% -20%, #00489A, #003A7D 60%, #00264C)",
-          }}
-        />
-        {/* Accent overlay */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, #DB8E2C 28%, transparent), transparent 62%)",
-          }}
-        />
-        {/* DebsMark watermark */}
-        <div className="absolute right-[-40px] bottom-[-60px] opacity-[.12] pointer-events-none select-none">
-          <DebsMark size={300} />
-        </div>
+      <section className="py-16 pb-[72px]">
+        <div className="max-w-[1180px] mx-auto px-7">
+          <Reveal>
+            <div
+              className="relative rounded-[28px] p-[56px_32px] text-center text-white overflow-hidden"
+              style={{
+                background:
+                  "radial-gradient(125% 130% at 80% -20%, #00489A, #003A7D 60%, #00264C)",
+              }}
+            >
+              {/* Accent overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(60% 100% at 50% 0%, color-mix(in srgb, #DB8E2C 28%, transparent), transparent 62%)",
+                }}
+              />
+              {/* DebsMark watermark */}
+              <div className="absolute right-[-40px] bottom-[-60px] opacity-[.12] pointer-events-none select-none">
+                <DebsMark size={300} />
+              </div>
 
-        <div className="relative max-w-[640px] mx-auto text-center">
-          <h2
-            className="text-[clamp(28px,3.6vw,38px)] font-semibold mb-4"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            Ready to take control?
-          </h2>
-          <p className="text-[16.5px] opacity-90 mb-8 leading-relaxed">
-            Join thousands of Zambians who trust Debs Insurance for their
-            financial security and peace of mind.
-          </p>
-          <Link
-            to="/register"
-            className="inline-flex items-center gap-2 font-bold text-base px-7 py-[15px] rounded-lg transition-all"
-            style={{ background: "var(--color-brand-accent)", color: "#fff" }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background =
-                "var(--color-brand-accent-deep)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = "var(--color-brand-accent)")
-            }
-          >
-            Create your free account <ArrowRight className="h-4 w-4" />
-          </Link>
+              <div className="relative max-w-[640px] mx-auto">
+                <h2
+                  className="text-[clamp(28px,3.6vw,38px)] font-semibold mb-4"
+                  style={{ fontFamily: "var(--font-serif)" }}
+                >
+                  Ready to take control?
+                </h2>
+                <p className="text-[16.5px] opacity-90 mb-8 leading-relaxed">
+                  Join thousands of Zambians who trust Debs Insurance for their
+                  financial security and peace of mind.
+                </p>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 font-bold text-base px-7 py-[15px] rounded-lg transition-all"
+                  style={{
+                    background: "var(--color-brand-accent)",
+                    color: "#fff",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "var(--color-brand-accent-deep)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background =
+                      "var(--color-brand-accent)")
+                  }
+                >
+                  Create your free account <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -702,7 +764,7 @@ export function LandingPage() {
               </div>
             ))}
 
-            {/* Contact */}
+            {/* Contact — plain spans, no icons */}
             <div>
               <h3
                 className="font-bold text-[14px] mb-3"
@@ -711,18 +773,15 @@ export function LandingPage() {
                 Contact
               </h3>
               <ul className="space-y-2 text-[13px]" style={{ opacity: 0.66 }}>
-                <li className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5" />
-                  <span>+260 123 456</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Mail className="h-3.5 w-3.5" />
-                  <span>hello@debs.zm</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span>Lusaka, Zambia</span>
-                </li>
+                {["+260 123 456", "hello@debs.zm", "Lusaka, Zambia"].map(
+                  (item) => (
+                    <li key={item}>
+                      <span className="hover:opacity-100 hover:translate-x-0.5 transition inline-block">
+                        {item}
+                      </span>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           </div>

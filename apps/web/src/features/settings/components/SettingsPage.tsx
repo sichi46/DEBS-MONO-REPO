@@ -1,371 +1,271 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRecoilState } from "recoil";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import toast from "react-hot-toast";
-import { User, Bell, Shield, Smartphone, Loader2 } from "lucide-react";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+  User,
+  UserCircle,
+  Users,
+  Wallet,
+  Moon,
+  Bell,
+  Fingerprint,
+  ChevronRight,
+  LogOut,
+  ShieldCheck,
+} from "lucide-react";
 
-import { userAtom } from "@/features/auth/state/atoms";
-import { authApi } from "@/features/auth/api";
+import { Button } from "@/components/ui/button";
+import { IconChip } from "@/components/ui/icon-chip";
 
-// Validation Schemas
-const profileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-});
+import {
+  userAtom,
+  accessTokenAtom,
+  refreshTokenAtom,
+  isAuthenticatedAtom,
+} from "@/features/auth/state/atoms";
 
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Must contain at least one uppercase letter")
-      .regex(/[a-z]/, "Must contain at least one lowercase letter")
-      .regex(/[0-9]/, "Must contain at least one number"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+// ---------- WToggle ----------
+function WToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${
+        on ? "bg-primary" : "bg-border"
+      }`}
+    >
+      <span
+        className={`absolute top-[3px] w-[22px] h-[22px] rounded-full bg-white shadow transition-all ${
+          on ? "left-[23px]" : "left-[3px]"
+        }`}
+      />
+    </button>
+  );
+}
 
-type ProfileFormValues = z.infer<typeof profileSchema>;
-type PasswordFormValues = z.infer<typeof passwordSchema>;
+// ---------- helpers ----------
+function getInitials(name: string | undefined | null): string {
+  if (!name) return "U";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function memberSince(createdAt: string | undefined | null): string {
+  if (!createdAt) return "Oct 2024";
+  const d = new Date(createdAt);
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+// ---------- Panel wrapper ----------
+function Panel({
+  icon,
+  title,
+  children,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-[22px]">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <span className="font-semibold text-[15px]">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ---------- SettingsRow ----------
+function SettingsRow({
+  icon,
+  label,
+  sub,
+  right,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  right: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-b border-border last:border-0 py-3.5">
+      {icon}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-[14px] leading-snug">{label}</p>
+        <p className="text-[13px] text-muted-foreground">{sub}</p>
+      </div>
+      <div className="shrink-0">{right}</div>
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const [user, setUser] = useRecoilState(userAtom);
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  const [, setAccessToken] = useRecoilState(accessTokenAtom);
+  const [, setRefreshToken] = useRecoilState(refreshTokenAtom);
+  const [, setIsAuthenticated] = useRecoilState(isAuthenticatedAtom);
+  const navigate = useNavigate();
 
-  // Profile Form
-  const profileForm = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      name: user?.name || "",
-      email: user?.email || "",
-      phone: user?.phone || "",
-      address: user?.address || "",
-    },
-  });
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+  const [biometric, setBiometric] = useState(false);
 
-  // Password Form
-  const passwordForm = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
-  });
-
-  // Update form defaults when user data loads
-  useEffect(() => {
-    if (user) {
-      profileForm.reset({
-        name: user.name,
-        email: user.email,
-        phone: user.phone || "",
-        address: user.address || "",
-      });
-    }
-  }, [user, profileForm]);
-
-  const onProfileSubmit = async (data: ProfileFormValues) => {
-    setIsProfileLoading(true);
-    try {
-      const response = await authApi.updateProfile({
-        name: data.name,
-        phone: data.phone,
-        address: data.address,
-      });
-
-      if (response.data?.user) {
-        setUser(response.data.user);
-        toast.success("Profile updated successfully");
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update profile",
-      );
-    } finally {
-      setIsProfileLoading(false);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    setIsAuthenticated(false);
+    navigate("/login");
   };
-
-  const onPasswordSubmit = async (data: PasswordFormValues) => {
-    setIsPasswordLoading(true);
-    try {
-      await authApi.changePassword(data.currentPassword, data.newPassword);
-      toast.success("Password changed successfully");
-      passwordForm.reset();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to change password",
-      );
-    } finally {
-      setIsPasswordLoading(false);
-    }
-  };
-
-  // User Initials for Avatar
-  const getInitials = (name: string | undefined) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  if (!user) {
-    return <div>Loading settings...</div>;
-  }
 
   return (
-    <div className="space-y-6" data-testid="settings-page">
-      {/* Header */}
-      <div>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences
-        </p>
+    <div
+      className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-[18px] items-start"
+      data-testid="settings-page"
+    >
+      {/* LEFT COLUMN */}
+      <div className="grid gap-[18px]">
+        {/* Account Panel */}
+        <Panel
+          icon={<IconChip icon={User} tone="primary" size="sm" />}
+          title="Account"
+        >
+          <SettingsRow
+            icon={<IconChip icon={UserCircle} tone="primary" size="sm" />}
+            label="Personal details"
+            sub="Name, phone, address"
+            right={
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => toast.info("Edit profile coming soon")}
+              >
+                Edit
+              </Button>
+            }
+          />
+          <SettingsRow
+            icon={<IconChip icon={Users} tone="success" size="sm" />}
+            label="Beneficiaries"
+            sub="4 people across policies"
+            right={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          />
+          <SettingsRow
+            icon={<IconChip icon={Wallet} tone="info" size="sm" />}
+            label="Payment methods"
+            sub="Mobile Money · 1 card"
+            right={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          />
+        </Panel>
+
+        {/* Preferences Panel */}
+        <Panel
+          icon={<IconChip icon={ShieldCheck} tone="accent" size="sm" />}
+          title="Preferences"
+        >
+          <SettingsRow
+            icon={<IconChip icon={Moon} tone="accent" size="sm" />}
+            label="Dark mode"
+            sub={darkMode ? "On" : "Off"}
+            right={
+              <WToggle on={darkMode} onToggle={() => setDarkMode((v) => !v)} />
+            }
+          />
+          <SettingsRow
+            icon={<IconChip icon={Bell} tone="warning" size="sm" />}
+            label="Notifications"
+            sub="Premiums, claims and offers"
+            right={
+              <WToggle
+                on={notifications}
+                onToggle={() => setNotifications((v) => !v)}
+              />
+            }
+          />
+          <SettingsRow
+            icon={<IconChip icon={Fingerprint} tone="primary" size="sm" />}
+            label="Biometric login"
+            sub="Face ID / fingerprint"
+            right={
+              <WToggle
+                on={biometric}
+                onToggle={() => setBiometric((v) => !v)}
+              />
+            }
+          />
+        </Panel>
       </div>
 
-      {/* Profile Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            Profile Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
-            <Avatar className="h-20 w-20">
-              <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                {getInitials(user.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <Button variant="outline" size="sm" disabled>
-                Change Photo (Coming Soon)
-              </Button>
-            </div>
+      {/* RIGHT COLUMN */}
+      <div className="grid gap-[18px]">
+        {/* Profile Card */}
+        <div className="bg-card border border-border rounded-2xl p-[22px] text-center">
+          {/* Avatar */}
+          <div
+            className="mx-auto flex items-center justify-center rounded-full text-white font-extrabold text-[26px]"
+            style={{
+              width: 72,
+              height: 72,
+              background: "var(--color-primary)",
+            }}
+          >
+            {getInitials(user?.name)}
           </div>
+          <p className="mt-3 font-extrabold text-[18px] leading-tight">
+            {user?.name ?? "—"}
+          </p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {user?.email ?? "—"}
+          </p>
+          {/* Member since badge */}
+          <span
+            className="inline-block mt-3 px-3 py-1 rounded-full text-[12px] font-semibold"
+            style={{
+              background: "var(--color-primary)/0.1",
+              color: "var(--color-primary)",
+              backgroundColor: "rgba(0,71,154,0.10)",
+            }}
+          >
+            Member since {memberSince(user?.createdAt)}
+          </span>
+        </div>
 
-          <Separator />
-
-          <Form {...profileForm}>
-            <form
-              onSubmit={profileForm.handleSubmit(onProfileSubmit)}
-              className="space-y-4"
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={profileForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={profileForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input {...field} disabled />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={profileForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="tel" placeholder="+260..." />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={profileForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Current address" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isProfileLoading}>
-                  {isProfileLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Save Profile
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      {/* Notification Preferences - Mocked for now */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            Notification Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">Email Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive updates about your policies and claims via email
-              </p>
-            </div>
-            <Switch defaultChecked />
+        {/* Support Panel */}
+        <Panel
+          icon={<IconChip icon={ShieldCheck} tone="neutral" size="sm" />}
+          title="Support"
+        >
+          <div
+            className="flex items-center justify-between border-b border-border py-3.5 cursor-pointer"
+            onClick={() => toast.info("Help and support coming soon")}
+          >
+            <span className="text-[14px] font-medium">Help and support</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Security Section (Password Change) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            Security
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Form {...passwordForm}>
-            <form
-              onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
-              className="space-y-4"
-            >
-              <div className="grid gap-4 sm:grid-cols-3">
-                <FormField
-                  control={passwordForm.control}
-                  name="currentPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Password</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="password" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={passwordForm.control}
-                  name="newPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New Password</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="password" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={passwordForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="password" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={isPasswordLoading}
-                >
-                  {isPasswordLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Update Password
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      {/* Connected Devices - Keeping static for now, complex to implement */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Smartphone className="h-5 w-5 text-primary" />
-            Connected Devices
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-4">
-              <div className="flex items-center gap-3">
-                <Smartphone className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Windows PC - Chrome</p>
-                  <p className="text-sm text-muted-foreground">
-                    Current Session
-                  </p>
-                </div>
-              </div>
-              <Badge variant="secondary">Current</Badge>
-            </div>
+          <div
+            className="flex items-center justify-between py-3.5 cursor-pointer"
+            onClick={() => toast.info("Privacy and terms coming soon")}
+          >
+            <span className="text-[14px] font-medium">Privacy and terms</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </div>
-        </CardContent>
-      </Card>
+        </Panel>
+
+        {/* Log out */}
+        <Button variant="destructive" className="w-full" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" />
+          Log out
+        </Button>
+      </div>
     </div>
   );
 }

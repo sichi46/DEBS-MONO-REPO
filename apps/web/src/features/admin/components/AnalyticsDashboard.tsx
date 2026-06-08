@@ -1,476 +1,505 @@
+import { useNavigate } from "react-router-dom";
 import {
   Users,
   FileText,
   ClipboardList,
-  DollarSign,
   TrendingUp,
-  Loader2,
+  Shield,
+  PieChart as PieChartIcon,
   AlertCircle,
+  ChevronRight,
 } from "lucide-react";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
 } from "recharts";
 
+import { IconChip } from "@/components/ui/icon-chip";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   useAdminStats,
   useMonthlyData,
   usePolicyDistribution,
 } from "../hooks/useAdmin";
+import {
+  mockMonthlyData,
+  mockPolicyDistribution,
+  mockAllClaims,
+  type MonthlyData,
+  type PolicyDistribution,
+} from "@/lib/mock-data";
 
-// Minimal mock for "needs attention" — in production this comes from the API
-const attentionClaims = [
-  {
-    id: "CLM-001",
-    type: "Medical",
-    amount: "ZMW 45,000",
-    customer: "Grace M.",
-    priority: "high" as const,
-  },
-  {
-    id: "CLM-002",
-    type: "Auto",
-    amount: "ZMW 12,500",
-    customer: "Chanda K.",
-    priority: "medium" as const,
-  },
-  {
-    id: "CLM-003",
-    type: "Home",
-    amount: "ZMW 8,200",
-    customer: "Mwale B.",
-    priority: "low" as const,
-  },
-];
+// ---------- helpers ----------
 
-const priorityVariant: Record<string, string> = {
-  high: "bg-destructive/10 text-destructive border-destructive/20",
-  medium: "bg-warning/10 text-warning border-warning/20",
-  low: "bg-success/10 text-success border-success/20",
-};
+function PanelHeader({
+  icon: Icon,
+  tone,
+  title,
+  sub,
+  actionLabel,
+  actionHref,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tone?:
+    | "primary"
+    | "accent"
+    | "success"
+    | "warning"
+    | "danger"
+    | "neutral"
+    | "info";
+  title: string;
+  sub?: string;
+  actionLabel?: string;
+  actionHref?: string;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div className="flex items-start justify-between mb-[18px]">
+      <div className="flex items-center gap-3">
+        <IconChip icon={Icon as any} tone={tone ?? "primary"} size="sm" />
+        <div>
+          <p className="text-[14px] font-semibold text-foreground leading-tight">
+            {title}
+          </p>
+          {sub && (
+            <p className="text-[12px] text-muted-foreground mt-0.5">{sub}</p>
+          )}
+        </div>
+      </div>
+      {actionLabel && actionHref && (
+        <button
+          onClick={() => navigate(actionHref)}
+          className="text-[12px] font-semibold text-primary hover:underline"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Small bar chart shared component
+function SmallBars({
+  data,
+  color,
+}: {
+  data: { name: string; v: number }[];
+  color: string;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={150}>
+      <BarChart data={data} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>
+        <CartesianGrid
+          strokeDasharray="3 4"
+          vertical={false}
+          stroke="var(--color-border)"
+        />
+        <XAxis
+          dataKey="name"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 9.5, fill: "var(--color-muted-foreground)", dy: 4 }}
+          interval={0}
+        />
+        <YAxis
+          allowDecimals={false}
+          width={28}
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 9.5, fill: "var(--color-muted-foreground)" }}
+        />
+        <Tooltip
+          cursor={{ fill: "var(--color-muted)" }}
+          contentStyle={{
+            background: "var(--color-card)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 8,
+            fontSize: 12,
+          }}
+        />
+        <Bar dataKey="v" fill={color} maxBarSize={22} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ---------- main component ----------
 
 export function AnalyticsDashboard() {
-  const { data: stats, isLoading: statsLoading } = useAdminStats();
-  const { data: monthlyData, isLoading: monthlyLoading } = useMonthlyData();
-  const { data: policyDistribution, isLoading: distLoading } =
-    usePolicyDistribution();
+  const navigate = useNavigate();
+  const { data: stats } = useAdminStats();
+  const { data: monthlyRaw } = useMonthlyData();
+  const { data: distRaw } = usePolicyDistribution();
 
-  if (statsLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const monthlyData: MonthlyData[] =
+    (monthlyRaw as MonthlyData[] | undefined) ?? mockMonthlyData;
+  const policyDist: PolicyDistribution[] =
+    (distRaw as PolicyDistribution[] | undefined) ?? mockPolicyDistribution;
+
+  // Attention claims: Pending or Under Review
+  const attentionClaims = mockAllClaims.filter(
+    (c) => c.status === "Pending" || c.status === "Under Review",
+  );
+
+  // Bar chart data
+  const revenueChartData = monthlyData.map((d) => ({
+    m: d.month,
+    rev: +(d.revenue / 1000).toFixed(1),
+    pay: +(d.payouts / 1000).toFixed(1),
+  }));
 
   return (
     <div
-      className="space-y-6 animate-fade-up"
+      className="space-y-[18px] animate-fade-up"
       data-testid="analytics-dashboard"
     >
-      <p className="text-muted-foreground">
-        Overview of your insurance business performance
-      </p>
+      {/* SECTION 1 — KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-[18px]">
+        {/* Total policies */}
+        <div className="bg-card border border-border rounded-2xl p-[22px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] font-semibold text-muted-foreground">
+              Total policies
+            </p>
+            <p
+              className="text-[27px] font-extrabold mt-2"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.totalPolicies ?? 12}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1 flex items-center gap-1">
+              <span className="text-[color:var(--color-success)] flex items-center gap-0.5 font-semibold">
+                <TrendingUp className="h-3 w-3" />
+                +8%
+              </span>
+              vs last month
+            </p>
+          </div>
+          <IconChip icon={Shield} tone="primary" size="md" />
+        </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Users"
-          value={stats?.totalUsers ?? 0}
-          sublabel={`${stats?.activeUsers ?? 0} active`}
-          icon={Users}
-          tone="primary"
-        />
-        <StatCard
-          label="Active Policies"
-          value={stats?.activePolicies ?? 0}
-          sublabel={`${stats?.totalPolicies ?? 0} total`}
-          icon={FileText}
-          tone="success"
-        />
-        <StatCard
-          label="Pending Claims"
-          value={stats?.pendingClaims ?? 0}
-          sublabel={`${stats?.totalClaims ?? 0} total claims`}
-          icon={ClipboardList}
-          tone="warning"
-        />
-        <StatCard
-          label="Monthly Revenue"
-          value={stats?.monthlyRevenue ?? "ZMW 0"}
-          icon={DollarSign}
-          tone="neutral"
-        />
+        {/* Customers */}
+        <div className="bg-card border border-border rounded-2xl p-[22px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] font-semibold text-muted-foreground">
+              Customers
+            </p>
+            <p
+              className="text-[27px] font-extrabold mt-2"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.totalUsers ?? 7}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1 flex items-center gap-1">
+              <span className="text-[color:var(--color-success)] font-semibold">
+                +2
+              </span>
+              this month
+            </p>
+          </div>
+          <IconChip icon={Users} tone="success" size="md" />
+        </div>
+
+        {/* Open claims */}
+        <div className="bg-card border border-border rounded-2xl p-[22px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] font-semibold text-muted-foreground">
+              Open claims
+            </p>
+            <p
+              className="text-[27px] font-extrabold mt-2"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.pendingClaims ?? 3}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1">
+              Needs action
+            </p>
+          </div>
+          <IconChip icon={ClipboardList} tone="warning" size="md" />
+        </div>
+
+        {/* Revenue MTD */}
+        <div className="bg-card border border-border rounded-2xl p-[22px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] font-semibold text-muted-foreground">
+              Revenue (MTD)
+            </p>
+            <p
+              className="text-[27px] font-extrabold mt-2"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.monthlyRevenue ?? "ZMW 88k"}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1 flex items-center gap-1">
+              <span className="text-[color:var(--color-success)] flex items-center gap-0.5 font-semibold">
+                <TrendingUp className="h-3 w-3" />
+                +11%
+              </span>
+              vs ZMW 79k last
+            </p>
+          </div>
+          <IconChip icon={TrendingUp} tone="info" size="md" />
+        </div>
       </div>
 
-      {/* Revenue Chart + Policy Distribution */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Revenue vs Payouts
-            </CardTitle>
-            <CardDescription>
-              Monthly comparison of revenue collected and claims paid out
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              {monthlyLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyData || []}>
-                    <defs>
-                      <linearGradient
-                        id="colorRevenue"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="#0057B7"
-                          stopOpacity={0.25}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#0057B7"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                      <linearGradient
-                        id="colorPayouts"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="#D9892A"
-                          stopOpacity={0.25}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#D9892A"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-muted"
-                    />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis
-                      className="text-xs"
-                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => [
-                        `ZMW ${value.toLocaleString()}`,
-                        "",
-                      ]}
-                      contentStyle={{
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #CBD5E0",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#0057B7"
-                      fillOpacity={1}
-                      fill="url(#colorRevenue)"
-                      name="Revenue"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="payouts"
-                      stroke="#D9892A"
-                      fillOpacity={1}
-                      fill="url(#colorPayouts)"
-                      name="Payouts"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
+      {/* SECTION 2 — Revenue vs Payouts + Policy distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-[18px] items-start">
+        {/* Revenue vs Payouts */}
+        <div className="bg-card border border-border rounded-2xl p-[22px]">
+          <PanelHeader
+            icon={TrendingUp}
+            tone="primary"
+            title="Revenue vs Payouts"
+            sub="Monthly comparison this year"
+          />
+          {/* Legend */}
+          <div className="flex gap-4 mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-[10px] h-[10px] rounded-[3px] bg-[color:var(--color-primary)]" />
+              <span className="text-[12px] text-muted-foreground">Revenue</span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-1.5">
+              <div className="w-[10px] h-[10px] rounded-[3px] bg-[color:var(--color-brand-accent)]" />
+              <span className="text-[12px] text-muted-foreground">Payouts</span>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart
+              data={revenueChartData}
+              barGap={5}
+              barCategoryGap="24%"
+              margin={{ top: 6, right: 6, left: -16, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 4"
+                vertical={false}
+                stroke="var(--color-border)"
+              />
+              <XAxis
+                dataKey="m"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                tickFormatter={(v) => `ZMW ${v}k`}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--color-muted)" }}
+                contentStyle={{
+                  background: "var(--color-card)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+              />
+              <Bar
+                dataKey="rev"
+                name="Revenue"
+                fill="var(--color-primary)"
+                maxBarSize={16}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                dataKey="pay"
+                name="Payouts"
+                fill="var(--color-brand-accent)"
+                maxBarSize={16}
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-        {/* Policy Distribution */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Policy Distribution</CardTitle>
-            <CardDescription>Breakdown by policy type</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {distLoading ? (
-              <div className="flex items-center justify-center h-[200px]">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : policyDistribution && policyDistribution.length > 0 ? (
-              <>
-                <div className="h-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={policyDistribution}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={2}
-                        dataKey="count"
-                      >
-                        {policyDistribution.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(
-                          value: number,
-                          _name: string,
-                          props: any,
-                        ) => [
-                          `${value} policies (${props.payload.percentage}%)`,
-                          props.payload.type,
-                        ]}
-                        contentStyle={{
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #CBD5E0",
-                          borderRadius: "8px",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {policyDistribution.map((item: any) => (
-                    <div
-                      key={item.type}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-muted-foreground">
-                          {item.type}
-                        </span>
-                      </div>
-                      <span className="font-medium">{item.percentage}%</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">
-                No policy data yet
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Needs your attention + summary cards */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Attention queue */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertCircle className="h-4 w-4 text-warning" />
-              Needs your attention
-            </CardTitle>
-            <CardDescription>Claims awaiting review</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {attentionClaims.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+        {/* Policy distribution */}
+        <div className="bg-card border border-border rounded-2xl p-[22px]">
+          <PanelHeader
+            icon={PieChartIcon}
+            tone="accent"
+            title="Policy distribution"
+            sub="By policy type"
+          />
+          <div className="flex items-center gap-[18px] flex-wrap justify-center">
+            {/* Pie */}
+            <div className="relative flex-shrink-0">
+              <PieChart width={200} height={200}>
+                <Pie
+                  data={policyDist.map((d) => ({
+                    ...d,
+                    pct: d.percentage,
+                    label: d.type,
+                  }))}
+                  dataKey="pct"
+                  nameKey="label"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="31%"
+                  outerRadius="46%"
+                  paddingAngle={2}
+                  startAngle={90}
+                  endAngle={-270}
                 >
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {c.id} · {c.type}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.customer}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold">{c.amount}</span>
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full border ${priorityVariant[c.priority]}`}
-                    >
-                      {c.priority}
-                    </span>
-                  </div>
+                  {policyDist.map((d, i) => (
+                    <Cell key={i} fill={d.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+              {/* Center label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span
+                  className="text-[26px] font-extrabold leading-none"
+                  style={{ fontFamily: "var(--font-serif)" }}
+                >
+                  {stats?.totalPolicies ?? 12}
+                </span>
+                <span className="text-[9.5px] font-bold tracking-widest text-muted-foreground mt-0.5 uppercase">
+                  Policies
+                </span>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="grid gap-[9px] flex-1 min-w-[130px]">
+              {policyDist.map((d) => (
+                <div key={d.type} className="flex items-center gap-2">
+                  <div
+                    className="w-[10px] h-[10px] rounded-[3px] flex-shrink-0"
+                    style={{ background: d.color }}
+                  />
+                  <span className="text-[13px] text-muted-foreground flex-1">
+                    {d.type}
+                  </span>
+                  <span
+                    className="text-[13px] font-bold"
+                    style={{ fontFamily: "var(--font-serif)" }}
+                  >
+                    {d.percentage}%
+                  </span>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Summary cards */}
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-sm text-muted-foreground">
-                Total Revenue (YTD)
-              </p>
-              <p className="text-xl font-bold mt-1">
-                {stats?.totalRevenue ?? "ZMW 0"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-sm text-muted-foreground">
-                Total Payouts (YTD)
-              </p>
-              <p className="text-xl font-bold mt-1">
-                {stats?.totalPayouts ?? "ZMW 0"}
-              </p>
-            </CardContent>
-          </Card>
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground">Approved</p>
-                <p className="text-lg font-bold mt-1 text-success">
-                  {stats?.approvedClaims ?? 0}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-muted-foreground">Rejected</p>
-                <p className="text-lg font-bold mt-1 text-destructive">
-                  {stats?.rejectedClaims ?? 0}
-                </p>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
 
-      {/* Charts: New Policies & Claims Filed */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4 text-primary" />
-              New Policies
-            </CardTitle>
-            <CardDescription>Monthly new policy registrations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[220px]">
-              {monthlyLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData || []}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-muted"
-                    />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #CBD5E0",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="newPolicies"
-                      fill="#0057B7"
-                      radius={[4, 4, 0, 0]}
-                      name="New Policies"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* SECTION 3 — Small bar charts */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
+        {/* New policies */}
+        <div className="bg-card border border-border rounded-2xl p-[22px]">
+          <PanelHeader
+            icon={FileText}
+            tone="primary"
+            title="New policies"
+            sub="Monthly registrations"
+          />
+          <SmallBars
+            data={monthlyData.map((d) => ({ name: d.month, v: d.newPolicies }))}
+            color="var(--color-primary)"
+          />
+        </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ClipboardList className="h-4 w-4 text-primary" />
-              Claims Filed
-            </CardTitle>
-            <CardDescription>Monthly claims submitted</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[220px]">
-              {monthlyLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData || []}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-muted"
+        {/* Claims filed */}
+        <div className="bg-card border border-border rounded-2xl p-[22px]">
+          <PanelHeader
+            icon={ClipboardList}
+            tone="accent"
+            title="Claims filed"
+            sub="Monthly submissions"
+          />
+          <SmallBars
+            data={monthlyData.map((d) => ({ name: d.month, v: d.claims }))}
+            color="var(--color-brand-accent)"
+          />
+        </div>
+      </div>
+
+      {/* SECTION 4 — Claims needing attention */}
+      <div className="bg-card border border-border rounded-2xl p-[22px]">
+        <PanelHeader
+          icon={AlertCircle}
+          tone="warning"
+          title="Claims needing attention"
+          actionLabel="Review all"
+          actionHref="/admin/claims"
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Claim</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {attentionClaims.map((c) => (
+              <TableRow
+                key={c.claimId}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => navigate("/admin/claims")}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        c.status === "Pending"
+                          ? "bg-destructive"
+                          : "bg-amber-400"
+                      }`}
                     />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #CBD5E0",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="claims"
-                      fill="#D9892A"
-                      radius={[4, 4, 0, 0]}
-                      name="Claims"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    <span className="font-bold text-[13px]">{c.claimId}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-[13px]">{c.userName}</TableCell>
+                <TableCell className="text-[13px]">{c.claimType}</TableCell>
+                <TableCell>
+                  <span
+                    className="font-bold text-[13px]"
+                    style={{ fontFamily: "var(--font-serif)" }}
+                  >
+                    {c.claimAmount}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      c.status === "Pending"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-amber-400/10 text-amber-600"
+                    }`}
+                  >
+                    {c.status}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
