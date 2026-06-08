@@ -9,6 +9,8 @@ import {
   Settings,
   LogOut,
   Search as SearchIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   userAtom,
@@ -26,7 +28,7 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarTrigger,
+  SidebarGroupLabel,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -91,30 +93,39 @@ function DebsMark({ size = 28 }: { size?: number }) {
   );
 }
 
-const navigationItems = [
+const menuItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "My Policies", path: "/dashboard/policies", icon: Shield },
   { name: "Claims", path: "/dashboard/claims", icon: FileText },
   { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
-  { name: "Browse Plans", path: "/dashboard/browse", icon: SearchIcon },
+];
+
+const discoverItems = [
+  {
+    name: "Browse Plans",
+    path: "/dashboard/browse",
+    icon: SearchIcon,
+    badge: "New",
+  },
+];
+
+const accountItems = [
   { name: "Settings", path: "/dashboard/settings", icon: Settings },
 ];
 
 export function DashboardSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  // Get real user from auth state
   const user = useRecoilValue(userAtom);
   const setUser = useSetRecoilState(userAtom);
   const setAccessToken = useSetRecoilState(accessTokenAtom);
   const setRefreshToken = useSetRecoilState(refreshTokenAtom);
   const setIsAuthenticated = useSetRecoilState(isAuthenticatedAtom);
 
-  // Generate user initials from name
   const getInitials = (name: string | undefined) => {
     if (!name) return "U";
     return name
@@ -125,60 +136,154 @@ export function DashboardSidebar() {
       .slice(0, 2);
   };
 
+  const isActive = (path: string) =>
+    path === "/dashboard"
+      ? location.pathname === "/dashboard"
+      : location.pathname.startsWith(path);
+
   const handleLogout = () => {
-    // Clear tokens from localStorage
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-
-    // Clear auth state
     setUser(null);
     setAccessToken(null);
     setRefreshToken(null);
     setIsAuthenticated(false);
-
-    // Redirect to login
     navigate("/login");
   };
 
+  const navItemClass = (active: boolean) =>
+    [
+      "text-[14.5px] transition-colors",
+      active
+        ? "font-bold text-sidebar-accent-foreground bg-sidebar-accent"
+        : "font-semibold text-muted-foreground hover:text-sidebar-foreground",
+    ].join(" ");
+
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      {/* Header — h-14 matches top bar height for alignment */}
-      <SidebarHeader className="h-14 px-4 flex flex-row items-center gap-3 border-b border-sidebar-border">
-        <SidebarTrigger className="shrink-0" />
-        {!isCollapsed && (
-          <div className="flex items-center gap-2 min-w-0">
-            <DebsMark size={24} />
-            <span className="text-base font-bold text-sidebar-foreground truncate">
+      {/* ── Header ── */}
+      <SidebarHeader className="h-14 px-3 flex flex-row items-center justify-between border-b border-sidebar-border">
+        <div className="flex items-center gap-2 min-w-0">
+          <DebsMark size={26} />
+          {!isCollapsed && (
+            <span className="text-[15px] font-bold text-sidebar-foreground truncate">
               Debs{" "}
               <span className="text-[color:var(--color-brand-accent)]">
                 Insurance
               </span>
             </span>
-          </div>
-        )}
+          )}
+        </div>
+        {/* Collapse toggle */}
+        <button
+          onClick={toggleSidebar}
+          className="h-6 w-6 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          aria-label="Toggle sidebar"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </button>
       </SidebarHeader>
 
-      {/* Navigation Menu */}
-      <SidebarContent className="py-4 overflow-hidden">
+      {/* ── Navigation ── */}
+      <SidebarContent className="py-3 overflow-hidden">
+        {/* MENU */}
         <SidebarGroup>
+          <SidebarGroupLabel className="text-[10.5px] font-bold tracking-[.12em] uppercase text-muted-foreground/70 px-3 mb-1">
+            Menu
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => {
-                const isActive =
-                  item.path === "/dashboard"
-                    ? location.pathname === "/dashboard"
-                    : location.pathname.startsWith(item.path);
+              {menuItems.map((item) => {
+                const active = isActive(item.path);
                 const Icon = item.icon;
-
                 return (
-                  <SidebarMenuItem key={item.path}>
+                  <SidebarMenuItem key={item.path} className="relative">
+                    {active && (
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-r-full" />
+                    )}
                     <SidebarMenuButton
                       asChild
-                      isActive={isActive}
+                      isActive={active}
                       tooltip={item.name}
+                      className={navItemClass(active)}
                     >
                       <Link to={item.path}>
-                        <Icon className="h-5 w-5" />
+                        <Icon className="h-[18px] w-[18px]" />
+                        <span>{item.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* DISCOVER */}
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="text-[10.5px] font-bold tracking-[.12em] uppercase text-muted-foreground/70 px-3 mb-1">
+            Discover
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {discoverItems.map((item) => {
+                const active = isActive(item.path);
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.path} className="relative">
+                    {active && (
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-r-full" />
+                    )}
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      tooltip={item.name}
+                      className={navItemClass(active)}
+                    >
+                      <Link to={item.path}>
+                        <Icon className="h-[18px] w-[18px]" />
+                        <span className="flex-1">{item.name}</span>
+                        {!isCollapsed && item.badge && (
+                          <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground leading-none">
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* ACCOUNT */}
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="text-[10.5px] font-bold tracking-[.12em] uppercase text-muted-foreground/70 px-3 mb-1">
+            Account
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {accountItems.map((item) => {
+                const active = isActive(item.path);
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.path} className="relative">
+                    {active && (
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-primary rounded-r-full" />
+                    )}
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      tooltip={item.name}
+                      className={navItemClass(active)}
+                    >
+                      <Link to={item.path}>
+                        <Icon className="h-[18px] w-[18px]" />
                         <span>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -190,20 +295,19 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer with User Info and Logout */}
+      {/* ── Footer ── */}
       <SidebarFooter
         className={`overflow-hidden ${isCollapsed ? "p-2" : "p-4"}`}
       >
-        {!isCollapsed && <Separator className="mb-4" />}
+        {!isCollapsed && <Separator className="mb-3" />}
 
-        {/* User Info */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm shrink-0">
             {getInitials(user?.name)}
           </div>
           {!isCollapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-sidebar-foreground truncate">
+              <span className="text-sm font-semibold text-sidebar-foreground truncate">
                 {user?.name || "User"}
               </span>
               <span className="text-xs text-muted-foreground truncate">
@@ -213,15 +317,14 @@ export function DashboardSidebar() {
           )}
         </div>
 
-        {/* Logout Button */}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setShowLogoutDialog(true)}
               tooltip="Logout"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="text-[14px] font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-[18px] w-[18px]" />
               <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
