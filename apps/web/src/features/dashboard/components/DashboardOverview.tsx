@@ -188,10 +188,7 @@ export function DashboardOverview() {
                 Total active cover
               </span>
             </div>
-            <p
-              className="text-[42px] font-extrabold leading-none mb-5"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="text-[42px] font-extrabold leading-none mb-5">
               {stats?.nextPaymentAmount ?? "ZMW 0"}
             </p>
 
@@ -263,10 +260,7 @@ export function DashboardOverview() {
             <p className="text-[12.5px] text-muted-foreground font-medium mb-1">
               Active policies
             </p>
-            <p
-              className="text-[28px] font-extrabold leading-none text-foreground mb-1"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="text-[28px] font-extrabold leading-none text-foreground mb-1">
               {isLoading ? "—" : (stats?.activePolicies ?? 0)}
             </p>
             <p className="text-[12px] text-muted-foreground">
@@ -286,10 +280,7 @@ export function DashboardOverview() {
             <p className="text-[12.5px] text-muted-foreground font-medium mb-1">
               Pending claims
             </p>
-            <p
-              className="text-[28px] font-extrabold leading-none text-foreground mb-1"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="text-[28px] font-extrabold leading-none text-foreground mb-1">
               {isLoading ? "—" : (stats?.pendingClaims ?? 0)}
             </p>
             <p className="text-[12px] text-muted-foreground">Awaiting review</p>
@@ -307,10 +298,7 @@ export function DashboardOverview() {
             <p className="text-[12.5px] text-muted-foreground font-medium mb-1">
               Approved claims
             </p>
-            <p
-              className="text-[28px] font-extrabold leading-none text-foreground mb-1"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="text-[28px] font-extrabold leading-none text-foreground mb-1">
               {isLoading ? "—" : (stats?.approvedClaims ?? 0)}
             </p>
             <p className="text-[12px] text-muted-foreground">
@@ -330,10 +318,7 @@ export function DashboardOverview() {
             <p className="text-[12.5px] text-muted-foreground font-medium mb-1">
               Next payment
             </p>
-            <p
-              className="text-[28px] font-extrabold leading-none text-foreground mb-1"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="text-[28px] font-extrabold leading-none text-foreground mb-1">
               {isLoading ? "—" : (stats?.nextPaymentAmount ?? "—")}
             </p>
             <p className="text-[12px] text-muted-foreground">
@@ -531,10 +516,7 @@ export function DashboardOverview() {
                         {claim.policyType}
                       </p>
                     </div>
-                    <p
-                      className="font-bold text-[15px] text-foreground shrink-0 mr-1"
-                      style={{ fontFamily: "var(--font-serif)" }}
-                    >
+                    <p className="font-bold text-[15px] text-foreground shrink-0 mr-1">
                       {claim.claimAmount}
                     </p>
                     <span
@@ -576,10 +558,7 @@ export function DashboardOverview() {
                 Upcoming payment
               </h3>
             </div>
-            <p
-              className="text-[30px] font-extrabold text-foreground leading-none mb-1"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="text-[30px] font-extrabold text-foreground leading-none mb-1">
               {stats?.nextPaymentAmount ?? "—"}
             </p>
             <p className="text-[12.5px] text-muted-foreground mb-4">

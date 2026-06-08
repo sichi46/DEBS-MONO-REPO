@@ -41,6 +41,56 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+function DebsMark({ size = 28 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="shrink-0"
+    >
+      <defs>
+        <linearGradient
+          id="sb-shield"
+          x1="24"
+          y1="3.5"
+          x2="24"
+          y2="39"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#2D6BD4" />
+          <stop offset="1" stopColor="#0D3C85" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M24 3.5l15 5.2v10.8c0 9.7-6.4 16.8-15 19.5C15.4 36.3 9 29.2 9 19.5V8.7z"
+        fill="url(#sb-shield)"
+      />
+      <path
+        d="M15.5 27.5L24 19l8.5 8.5"
+        stroke="white"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity=".95"
+        fill="none"
+      />
+      <path
+        d="M15.5 21L24 12.5l8.5 8.5"
+        stroke="white"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity=".42"
+        fill="none"
+      />
+      <circle cx="24" cy="11" r="2.4" fill="#DB8E2C" />
+    </svg>
+  );
+}
+
 const navigationItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "My Policies", path: "/dashboard/policies", icon: Shield },
@@ -97,13 +147,12 @@ export function DashboardSidebar() {
         <SidebarTrigger className="shrink-0" />
         {!isCollapsed && (
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-              <span className="text-primary-foreground text-xs font-bold">
-                D
-              </span>
-            </div>
+            <DebsMark size={24} />
             <span className="text-base font-bold text-sidebar-foreground truncate">
-              Debs Insurance
+              Debs{" "}
+              <span className="text-[color:var(--color-brand-accent)]">
+                Insurance
+              </span>
             </span>
           </div>
         )}

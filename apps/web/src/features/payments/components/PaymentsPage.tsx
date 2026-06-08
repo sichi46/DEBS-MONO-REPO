@@ -158,7 +158,6 @@ export function PaymentsPage() {
             <p
               className="font-extrabold leading-none mb-2"
               style={{
-                fontFamily: "var(--font-serif)",
                 fontSize: 40,
                 letterSpacing: "-0.03em",
               }}
@@ -221,10 +220,7 @@ export function PaymentsPage() {
             <p className="text-[12.5px] font-medium text-muted-foreground">
               Paid this year
             </p>
-            <p
-              className="font-extrabold text-[26px] leading-none text-foreground"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="font-extrabold text-[26px] leading-none text-foreground">
               {isLoading ? "—" : `ZMW ${totalPaid.toLocaleString()}`}
             </p>
             <p className="text-[11.5px] text-muted-foreground">
@@ -240,10 +236,7 @@ export function PaymentsPage() {
             <p className="text-[12.5px] font-medium text-muted-foreground">
               Payments made
             </p>
-            <p
-              className="font-extrabold text-[26px] leading-none text-foreground"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="font-extrabold text-[26px] leading-none text-foreground">
               {isLoading ? "—" : paidCount}
             </p>
             <p className="text-[11.5px] text-muted-foreground">On time</p>
@@ -257,10 +250,7 @@ export function PaymentsPage() {
             <p className="text-[12.5px] font-medium text-muted-foreground">
               Methods
             </p>
-            <p
-              className="font-extrabold text-[26px] leading-none text-foreground"
-              style={{ fontFamily: "var(--font-serif)" }}
-            >
+            <p className="font-extrabold text-[26px] leading-none text-foreground">
               3
             </p>
             <p className="text-[11.5px] text-muted-foreground">
@@ -316,10 +306,7 @@ export function PaymentsPage() {
                     <TableCell className="font-medium text-sm">
                       {payment.policyNumber}
                     </TableCell>
-                    <TableCell
-                      className="font-bold text-sm"
-                      style={{ fontFamily: "var(--font-serif)" }}
-                    >
+                    <TableCell className="font-bold text-sm">
                       {payment.amount}
                     </TableCell>
                     <TableCell>{statusBadge(payment.status)}</TableCell>
