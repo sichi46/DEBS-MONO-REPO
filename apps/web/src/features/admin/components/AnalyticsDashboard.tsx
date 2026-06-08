@@ -380,6 +380,11 @@ export function AnalyticsDashboard() {
 
             {/* Legend */}
             <div className="grid gap-[9px] flex-1 min-w-[130px]">
+              {policyDist.length === 0 && (
+                <p className="text-[13px] text-muted-foreground">
+                  No policy data yet
+                </p>
+              )}
               {policyDist.map((d) => (
                 <div key={d.type} className="flex items-center gap-2">
                   <div

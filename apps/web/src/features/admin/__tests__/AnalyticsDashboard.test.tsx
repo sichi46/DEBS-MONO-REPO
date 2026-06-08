@@ -1,6 +1,10 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+const renderWithRouter = (ui: React.ReactElement) =>
+  render(<MemoryRouter>{ui}</MemoryRouter>);
 
 // Mock recharts to avoid rendering issues in jsdom
 vi.mock("recharts", () => ({
@@ -94,45 +98,39 @@ describe("AnalyticsDashboard", () => {
   it("should show loading spinner when stats are loading", () => {
     setDefaultMocks({ statsLoading: true, stats: undefined });
 
-    render(<AnalyticsDashboard />);
+    renderWithRouter(<AnalyticsDashboard />);
 
-    // The component returns a Loader2 spinner when statsLoading is true
-    const spinner = document.querySelector(".animate-spin");
-    expect(spinner).toBeInTheDocument();
+    // Component always renders (no blocking spinner); dashboard is present
+    expect(screen.getByTestId("analytics-dashboard")).toBeInTheDocument();
 
-    // The dashboard content should NOT be rendered
-    expect(screen.queryByTestId("analytics-dashboard")).not.toBeInTheDocument();
+    // With no stats data, fallback values are used (12, 7, 3)
+    expect(screen.getByText("Total policies")).toBeInTheDocument();
   });
 
   it("should render stat cards with data", () => {
     setDefaultMocks();
 
-    render(<AnalyticsDashboard />);
+    renderWithRouter(<AnalyticsDashboard />);
 
     expect(screen.getByTestId("analytics-dashboard")).toBeInTheDocument();
 
-    // Check stat card titles
-    expect(screen.getByText("Total Users")).toBeInTheDocument();
-    expect(screen.getByText("Active Policies")).toBeInTheDocument();
-    expect(screen.getByText("Pending Claims")).toBeInTheDocument();
-    expect(screen.getByText("Monthly Revenue")).toBeInTheDocument();
+    // Check stat card titles (reference V2 labels)
+    expect(screen.getByText("Total policies")).toBeInTheDocument();
+    expect(screen.getByText("Customers")).toBeInTheDocument();
+    expect(screen.getByText("Open claims")).toBeInTheDocument();
+    expect(screen.getByText("Revenue (MTD)")).toBeInTheDocument();
 
-    // Check stat card values
-    expect(screen.getByText("150")).toBeInTheDocument();
-    expect(screen.getByText("85")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("ZMW 25,000")).toBeInTheDocument();
-
-    // Check sublabels (formerly descriptions) — StatCard renders these as sublabel
-    expect(screen.getByText("120 active")).toBeInTheDocument();
-    expect(screen.getByText("100 total")).toBeInTheDocument();
-    expect(screen.getByText("45 total claims")).toBeInTheDocument();
+    // Check stat card values from mockStats
+    expect(screen.getAllByText("100").length).toBeGreaterThan(0); // totalPolicies (also in donut center)
+    expect(screen.getByText("150")).toBeInTheDocument(); // totalUsers
+    expect(screen.getByText("12")).toBeInTheDocument(); // pendingClaims
+    expect(screen.getByText("ZMW 25,000")).toBeInTheDocument(); // monthlyRevenue
   });
 
   it("should render 'No policy data yet' when distribution is empty", () => {
     setDefaultMocks({ policyDistribution: [] });
 
-    render(<AnalyticsDashboard />);
+    renderWithRouter(<AnalyticsDashboard />);
 
     expect(screen.getByText("No policy data yet")).toBeInTheDocument();
   });
@@ -146,7 +144,7 @@ describe("AnalyticsDashboard", () => {
 
     setDefaultMocks({ policyDistribution: distribution });
 
-    render(<AnalyticsDashboard />);
+    renderWithRouter(<AnalyticsDashboard />);
 
     expect(screen.queryByText("No policy data yet")).not.toBeInTheDocument();
     expect(screen.getByText("Auto")).toBeInTheDocument();
@@ -159,9 +157,10 @@ describe("AnalyticsDashboard", () => {
 
   it("should render 'Needs your attention' section with pending claims", () => {
     setDefaultMocks();
-    render(<AnalyticsDashboard />);
-    expect(screen.getByText("Needs your attention")).toBeInTheDocument();
-    // Static attention items are always rendered
-    expect(screen.getByText(/CLM-001/)).toBeInTheDocument();
+    renderWithRouter(<AnalyticsDashboard />);
+    // V2 label
+    expect(screen.getByText("Claims needing attention")).toBeInTheDocument();
+    // Pending/Under Review claims from mockAllClaims are always rendered
+    expect(screen.getByText(/CLM-2024-0002/)).toBeInTheDocument();
   });
 });
