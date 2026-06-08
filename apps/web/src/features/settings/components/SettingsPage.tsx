@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import { useRecoilState } from "recoil";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -113,7 +114,7 @@ export function SettingsPage() {
   const [, setIsAuthenticated] = useRecoilState(isAuthenticatedAtom);
   const navigate = useNavigate();
 
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useDarkMode();
   const [notifications, setNotifications] = useState(true);
   const [biometric, setBiometric] = useState(false);
 
