@@ -1,179 +1,98 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { z } from "zod";
-import { StatCard } from "@/components/ui/stat-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+﻿import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  Clock,
+  CheckCircle,
+  ClipboardList,
+  Plus,
+  HeartPulse,
+  Building2,
+  Car,
+  AlertTriangle,
+} from "lucide-react";
+import { IconChip } from "@/components/ui/icon-chip";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  FileText,
-  Plus,
-  Upload,
-  CheckCircle,
-  Clock,
-  XCircle,
-} from "lucide-react";
-import toast from "react-hot-toast";
-import {
-  useClaims,
-  usePoliciesForClaim,
-  useSubmitClaim,
-} from "../hooks/useClaims";
-import { claimTypes, type ClaimStatus } from "@/lib/mock-data";
+import { useClaims } from "../hooks/useClaims";
+import type { ClaimStatus } from "@/lib/mock-data";
+import type { LucideIcon } from "lucide-react";
 
-const claimFormSchema = z.object({
-  policyNumber: z.string().min(1, "Please select a policy"),
-  claimType: z.string().min(1, "Please select a claim type"),
-  amount: z
-    .string()
-    .min(1, "Amount is required")
-    .refine(
-      (val) => !isNaN(Number(val)) && Number(val) > 0,
-      "Amount must be a positive number",
-    ),
-  dateOfIncident: z
-    .string()
-    .min(1, "Date of incident is required")
-    .refine(
-      (val) => new Date(val) <= new Date(),
-      "Date cannot be in the future",
-    ),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-});
-
-type ClaimFormErrors = Partial<
-  Record<keyof z.infer<typeof claimFormSchema>, string>
->;
-
-function getStatusVariant(
-  status: ClaimStatus,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "Approved":
-      return "default";
-    case "Pending":
-    case "Under Review":
-      return "secondary";
-    case "Rejected":
-      return "destructive";
+function claimTypeIcon(claimType: string): LucideIcon {
+  switch (claimType) {
+    case "Medical":
+      return HeartPulse;
+    case "Hospital":
+      return Building2;
+    case "Accident":
+      return Car;
+    case "Critical Illness":
+      return AlertTriangle;
     default:
-      return "outline";
+      return ClipboardList;
   }
 }
 
-function ClaimRowSkeleton() {
+function stageFromStatus(status: ClaimStatus): number {
+  switch (status) {
+    case "Approved":
+      return 4;
+    case "Under Review":
+      return 3;
+    case "Pending":
+      return 2;
+    case "Rejected":
+      return 1;
+    default:
+      return 1;
+  }
+}
+
+function statusBadgeTone(status: ClaimStatus): string {
+  switch (status) {
+    case "Approved":
+      return "bg-success/10 text-success border-success/20";
+    case "Pending":
+      return "bg-warning/10 text-warning border-warning/20";
+    case "Under Review":
+      return "bg-primary/10 text-primary border-primary/20";
+    case "Rejected":
+      return "bg-destructive/10 text-destructive border-destructive/20";
+    default:
+      return "bg-muted text-muted-foreground border-border";
+  }
+}
+
+const STAGE_LABELS = ["Submitted", "Reviewing", "Assessment", "Paid out"];
+
+function ClaimCardSkeleton() {
   return (
-    <TableRow>
-      <TableCell>
-        <Skeleton className="h-4 w-24" />
-      </TableCell>
-      <TableCell>
-        <div className="space-y-1">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-20" />
+    <div className="bg-card border border-border rounded-2xl p-[18px] space-y-4">
+      <div className="flex items-start gap-3">
+        <Skeleton
+          className="rounded-xl shrink-0"
+          style={{ width: 50, height: 50 }}
+        />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-48" />
         </div>
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-20" />
-      </TableCell>
-      <TableCell>
         <Skeleton className="h-6 w-20" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-24" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-24" />
-      </TableCell>
-    </TableRow>
+      </div>
+      <div className="flex gap-1 mt-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="flex-1 h-[5px] rounded-full" />
+        ))}
+      </div>
+    </div>
   );
 }
 
 export function ClaimsPage() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { data, isLoading, error } = useClaims();
-  const { data: policies } = usePoliciesForClaim();
-  const submitClaim = useSubmitClaim();
-
-  const [formData, setFormData] = useState({
-    policyNumber: "",
-    claimType: "",
-    amount: "",
-    dateOfIncident: "",
-    description: "",
-  });
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [formErrors, setFormErrors] = useState<ClaimFormErrors>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubmitClaim = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormErrors({});
-
-    const result = claimFormSchema.safeParse(formData);
-    if (!result.success) {
-      const errors: ClaimFormErrors = {};
-      result.error.errors.forEach((err) => {
-        const field = err.path[0] as keyof ClaimFormErrors;
-        if (!errors[field]) errors[field] = err.message;
-      });
-      setFormErrors(errors);
-      return;
-    }
-
-    try {
-      await submitClaim.mutateAsync({
-        policyNumber: result.data.policyNumber,
-        claimType: result.data.claimType,
-        amount: parseFloat(result.data.amount),
-        dateOfIncident: result.data.dateOfIncident,
-        description: result.data.description,
-      });
-
-      toast.success(
-        "Claim submitted successfully! You will receive updates via email.",
-      );
-      setIsDialogOpen(false);
-      setFormData({
-        policyNumber: "",
-        claimType: "",
-        amount: "",
-        dateOfIncident: "",
-        description: "",
-      });
-      setFormErrors({});
-      setSelectedFiles([]);
-    } catch {
-      toast.error("Failed to submit claim. Please try again.");
-    }
-  };
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "in-progress" | "settled"
+  >("all");
 
   if (error) {
     return (
@@ -188,11 +107,12 @@ export function ClaimsPage() {
   const allClaims = data?.claims || [];
   const stats = data?.stats;
 
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "in-progress" | "settled"
-  >("all");
+  const approvedClaims = allClaims.filter((c) => c.status === "Approved");
+  const openClaims = allClaims.filter(
+    (c) => c.status === "Pending" || c.status === "Under Review",
+  );
 
-  const claims = allClaims.filter((c) => {
+  const filteredClaims = allClaims.filter((c) => {
     if (activeFilter === "in-progress")
       return c.status === "Pending" || c.status === "Under Review";
     if (activeFilter === "settled")
@@ -201,334 +121,187 @@ export function ClaimsPage() {
   });
 
   return (
-    <div className="space-y-6 animate-fade-up" data-testid="claims-page">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-muted-foreground">
-            Manage and track your insurance claims
-          </p>
+    <div className="space-y-[18px] animate-fade-up" data-testid="claims-page">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[18px]">
+        {/* Open Claims */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">
+              Open Claims
+            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-12 mt-1" />
+            ) : (
+              <p
+                className="text-[28px] font-extrabold leading-tight mt-0.5"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                {openClaims.length}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Pending or under review
+            </p>
+          </div>
+          <IconChip icon={Clock} tone="warning" size="md" />
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="pr-5">
-              <Plus className="mr-2 h-4 w-4" />
-              Submit New Claim
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Submit New Claim</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmitClaim} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="policy">Select Policy</Label>
-                <Select
-                  value={formData.policyNumber}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, policyNumber: value })
-                  }
-                >
-                  <SelectTrigger
-                    id="policy"
-                    className={
-                      formErrors.policyNumber ? "border-destructive" : ""
-                    }
+
+        {/* Approved */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">
+              Approved
+            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-12 mt-1" />
+            ) : (
+              <p
+                className="text-[28px] font-extrabold leading-tight mt-0.5"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                {stats?.approved ?? 0}
+              </p>
+            )}
+            {approvedClaims.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {approvedClaims[0]?.claimAmount} paid
+              </p>
+            )}
+          </div>
+          <IconChip icon={CheckCircle} tone="success" size="md" />
+        </div>
+
+        {/* Total Claims */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">
+              Total Claims
+            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-12 mt-1" />
+            ) : (
+              <p
+                className="text-[28px] font-extrabold leading-tight mt-0.5"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                {stats?.total ?? 0}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              All time submitted
+            </p>
+          </div>
+          <IconChip icon={ClipboardList} tone="primary" size="md" />
+        </div>
+      </div>
+
+      {/* Filter row + CTA */}
+      <div className="flex justify-between items-center gap-4 flex-wrap">
+        <div
+          className="bg-muted rounded-lg p-1 flex gap-1"
+          style={{ width: 340 }}
+        >
+          {(["all", "in-progress", "settled"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                activeFilter === f
+                  ? "bg-card text-primary shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {f === "all"
+                ? "All"
+                : f === "in-progress"
+                  ? "In progress"
+                  : "Settled"}
+            </button>
+          ))}
+        </div>
+        <Button asChild>
+          <Link to="/dashboard/claims/new">
+            <Plus className="h-4 w-4 mr-1.5" />
+            File a new claim
+          </Link>
+        </Button>
+      </div>
+
+      {/* Claim Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <ClaimCardSkeleton key={i} />)
+        ) : filteredClaims.length === 0 ? (
+          <div className="sm:col-span-2 bg-card border border-border rounded-2xl p-[22px] text-center py-12">
+            <ClipboardList className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-muted-foreground">No claims found</p>
+          </div>
+        ) : (
+          filteredClaims.map((claim) => {
+            const ClaimIcon = claimTypeIcon(claim.claimType);
+            const stage = stageFromStatus(claim.status);
+            return (
+              <div
+                key={claim.claimId}
+                className="bg-card border border-border rounded-2xl p-[18px] cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/dashboard/claims/${claim.claimId}`)}
+              >
+                {/* Top row */}
+                <div className="flex items-start gap-3">
+                  <div
+                    className="flex shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                    style={{ width: 50, height: 50 }}
                   >
-                    <SelectValue placeholder="Choose a policy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {policies?.map((policy) => (
-                      <SelectItem
-                        key={policy.policyNumber}
-                        value={policy.policyNumber}
-                      >
-                        {policy.policyType} - {policy.policyNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.policyNumber && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.policyNumber}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="claimType">Claim Type</Label>
-                <Select
-                  value={formData.claimType}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, claimType: value })
-                  }
-                >
-                  <SelectTrigger
-                    id="claimType"
-                    className={formErrors.claimType ? "border-destructive" : ""}
-                  >
-                    <SelectValue placeholder="Select claim type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {claimTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.claimType && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.claimType}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="amount">Claim Amount (ZMW)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="10000"
-                  value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
-                  }
-                  className={formErrors.amount ? "border-destructive" : ""}
-                />
-                {formErrors.amount && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.amount}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date">Date of Incident</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.dateOfIncident}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dateOfIncident: e.target.value })
-                  }
-                  max={new Date().toISOString().split("T")[0]}
-                  className={
-                    formErrors.dateOfIncident ? "border-destructive" : ""
-                  }
-                />
-                {formErrors.dateOfIncident && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.dateOfIncident}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Please provide details about your claim..."
-                  rows={4}
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className={formErrors.description ? "border-destructive" : ""}
-                />
-                {formErrors.description && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.description}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Supporting Documents</Label>
-                <div className="rounded-lg border-2 border-dashed p-6 text-center">
-                  <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                  <p className="mb-2 text-sm text-muted-foreground">
-                    Upload medical bills, receipts, or other supporting
-                    documents
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []);
-                      setSelectedFiles(files);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Choose Files
-                  </Button>
-                  {selectedFiles.length > 0 && (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {selectedFiles.length} file
-                      {selectedFiles.length > 1 ? "s" : ""} selected
+                    <ClaimIcon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[15.5px] leading-snug">
+                      {claim.claimType} Claim
                     </p>
-                  )}
+                    <p className="text-[12.5px] text-muted-foreground mt-0.5 truncate">
+                      {claim.claimId} &middot; {claim.dateSubmitted} &middot;{" "}
+                      {claim.policyNumber}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <p
+                      className="text-[16px] font-extrabold leading-none"
+                      style={{ fontFamily: "var(--font-serif)" }}
+                    >
+                      {claim.claimAmount}
+                    </p>
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusBadgeTone(claim.status)}`}
+                    >
+                      {claim.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="flex gap-1 mt-4">
+                  {STAGE_LABELS.map((label, idx) => (
+                    <div
+                      key={label}
+                      className="flex flex-col items-center flex-1 gap-1"
+                    >
+                      <div
+                        className={`h-[5px] rounded-full w-full ${
+                          idx < stage ? "bg-primary" : "bg-muted"
+                        }`}
+                      />
+                      <span className="text-[11.5px] text-muted-foreground font-semibold">
+                        {label}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={submitClaim.isPending}
-                >
-                  {submitClaim.isPending ? "Submitting..." : "Submit Claim"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+            );
+          })
+        )}
       </div>
-
-      {/* Stats Summary */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Claims"
-          value={isLoading ? "—" : stats?.total || 0}
-          icon={FileText}
-          tone="primary"
-          isLoading={isLoading}
-        />
-        <StatCard
-          label="Approved"
-          value={isLoading ? "—" : stats?.approved || 0}
-          icon={CheckCircle}
-          tone="success"
-          isLoading={isLoading}
-        />
-        <StatCard
-          label="Pending"
-          value={isLoading ? "—" : stats?.pending || 0}
-          icon={Clock}
-          tone="warning"
-          isLoading={isLoading}
-        />
-        <StatCard
-          label="Rejected"
-          value={isLoading ? "—" : stats?.rejected || 0}
-          icon={XCircle}
-          tone="danger"
-          isLoading={isLoading}
-        />
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {(["all", "in-progress", "settled"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setActiveFilter(f)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              activeFilter === f
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {f === "all"
-              ? "All"
-              : f === "in-progress"
-                ? "In Progress"
-                : "Settled"}
-          </button>
-        ))}
-      </div>
-
-      {/* Claims Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4 text-primary" />
-            {activeFilter === "all"
-              ? "All Claims"
-              : activeFilter === "in-progress"
-                ? "In Progress"
-                : "Settled Claims"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Claim ID</TableHead>
-                <TableHead>Policy</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Processed</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <ClaimRowSkeleton key={i} />
-                ))
-              ) : claims.length > 0 ? (
-                claims.map((claim) => (
-                  <TableRow
-                    key={claim.claimId}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() =>
-                      navigate(`/dashboard/claims/${claim.claimId}`)
-                    }
-                  >
-                    <TableCell className="font-medium">
-                      {claim.claimId}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p>{claim.policyType}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {claim.policyNumber}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{claim.claimAmount}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(claim.status)}>
-                        {claim.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{claim.dateSubmitted}</TableCell>
-                    <TableCell>{claim.dateProcessed}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <CheckCircle className="h-12 w-12 text-muted-foreground/50" />
-                      <p className="mt-2 text-muted-foreground">
-                        No claims yet
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }

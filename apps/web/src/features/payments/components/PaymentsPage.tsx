@@ -1,5 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -9,18 +7,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { StatCard } from "@/components/ui/stat-card";
+import { IconChip } from "@/components/ui/icon-chip";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CreditCard,
   Download,
-  Filter,
   Smartphone,
   Building2,
-  Repeat,
+  RefreshCw,
+  CalendarDays,
+  CheckCircle,
+  Receipt,
+  Wallet,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { mockPaymentHistory, type PaymentStatus } from "@/lib/mock-data";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
 
 const paymentsApi = {
   getPayments: async () => {
@@ -29,37 +31,45 @@ const paymentsApi = {
   },
 };
 
-function getStatusVariant(
-  status: PaymentStatus,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "Paid":
-      return "default";
-    case "Pending":
-      return "secondary";
-    case "Failed":
-      return "destructive";
-    default:
-      return "outline";
-  }
-}
-
 function methodIcon(method: string) {
   if (method.toLowerCase().includes("mobile"))
-    return <Smartphone className="h-3.5 w-3.5" />;
+    return (
+      <Smartphone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+    );
   if (method.toLowerCase().includes("bank"))
-    return <Building2 className="h-3.5 w-3.5" />;
-  return <CreditCard className="h-3.5 w-3.5" />;
+    return <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
+  return <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
 }
 
 function methodLabel(method: string) {
-  // Enrich Mobile Money with provider info where recognisable
   const m = method.toLowerCase();
   if (m.includes("airtel")) return "Airtel Money";
   if (m.includes("mtn")) return "MTN Money";
   if (m.includes("zamtel")) return "Zamtel Money";
   if (m.includes("mobile")) return "Mobile Money";
   return method;
+}
+
+function statusBadge(status: PaymentStatus) {
+  if (status === "Paid") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-success/12 px-2.5 py-0.5 text-[11.5px] font-semibold text-success">
+        Paid
+      </span>
+    );
+  }
+  if (status === "Pending") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-warning/12 px-2.5 py-0.5 text-[11.5px] font-semibold text-warning">
+        Pending
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-destructive/12 px-2.5 py-0.5 text-[11.5px] font-semibold text-destructive">
+      {status}
+    </span>
+  );
 }
 
 function PaymentRowSkeleton() {
@@ -119,97 +129,169 @@ export function PaymentsPage() {
       ?.filter((p) => p.status === "Paid")
       .reduce((sum, p) => sum + parseInt(p.amount.replace(/\D/g, "")), 0) || 0;
 
-  const hasAutopay = false; // wire to real data when API returns it
+  const paidCount = payments?.filter((p) => p.status === "Paid").length ?? 0;
 
   return (
-    <div className="space-y-6 animate-fade-up" data-testid="payments-page">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-muted-foreground">
-          View your payment history and manage upcoming payments
-        </p>
-        <Button className="pr-5">
-          <CreditCard className="mr-2 h-4 w-4" />
-          Make a Payment
-        </Button>
+    <div className="space-y-[18px] animate-fade-up" data-testid="payments-page">
+      {/* SECTION 1 — col-main: gradient card + autopay nudge */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-[18px] items-start">
+        {/* Gradient next-payment card */}
+        <div
+          className="rounded-[22px] p-7 text-white overflow-hidden relative"
+          style={{
+            background:
+              "linear-gradient(120deg, var(--color-primary), #003A7D)",
+          }}
+        >
+          {/* Watermark icon */}
+          <CreditCard
+            size={170}
+            className="absolute opacity-[.12] pointer-events-none"
+            style={{ right: -10, top: -10 }}
+          />
+
+          {/* Content */}
+          <div className="relative">
+            <p className="text-[13px] font-semibold opacity-85 mb-1">
+              Next payment due
+            </p>
+            <p
+              className="font-extrabold leading-none mb-2"
+              style={{
+                fontFamily: "var(--font-serif)",
+                fontSize: 40,
+                letterSpacing: "-0.03em",
+              }}
+            >
+              ZMW 2,050
+            </p>
+            <p className="text-[13.5px] opacity-85 flex items-center gap-1.5 mb-5">
+              <CalendarDays size={14} />
+              Due Nov 1, 2025 &middot; 2 policies
+            </p>
+            <Button
+              size="lg"
+              className="bg-[color:var(--color-brand-accent)] hover:bg-[color:var(--color-brand-accent-deep)] text-white border-0"
+              asChild
+            >
+              <Link to="/dashboard/payments/pay">
+                <CreditCard className="h-4 w-4" />
+                Pay now
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* AutoPay nudge card */}
+        <div
+          className="rounded-2xl p-[22px] flex items-center gap-3 border"
+          style={{
+            background: "var(--color-brand-accent-tint)",
+            borderColor:
+              "color-mix(in srgb, var(--color-brand-accent) 30%, transparent)",
+          }}
+        >
+          <RefreshCw
+            size={24}
+            style={{ color: "var(--color-brand-accent-deep)" }}
+            className="shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-[14.5px] text-foreground leading-snug">
+              Never miss a payment
+            </p>
+            <p className="text-[12.5px] text-muted-foreground mt-0.5">
+              Turn on AutoPay with Mobile Money
+            </p>
+          </div>
+          <Button
+            size="sm"
+            className="shrink-0 bg-[color:var(--color-brand-accent)] hover:bg-[color:var(--color-brand-accent-deep)] text-white border-0"
+          >
+            Set up
+          </Button>
+        </div>
       </div>
 
-      {/* Autopay nudge */}
-      {!hasAutopay && !isLoading && (
-        <div className="flex items-center justify-between rounded-xl bg-[color:var(--color-brand-accent-tint)] border border-[color:var(--color-brand-accent)]/20 px-5 py-4 gap-4">
-          <div className="flex items-center gap-3">
-            <Repeat className="h-5 w-5 text-[color:var(--color-brand-accent)] shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                Set up autopay
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Never miss a premium — enable recurring payments for peace of
-                mind.
-              </p>
-            </div>
+      {/* SECTION 2 — grid-3 KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[18px]">
+        {/* Paid this year */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <p className="text-[12.5px] font-medium text-muted-foreground">
+              Paid this year
+            </p>
+            <p
+              className="font-extrabold text-[26px] leading-none text-foreground"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {isLoading ? "—" : `ZMW ${totalPaid.toLocaleString()}`}
+            </p>
+            <p className="text-[11.5px] text-muted-foreground">
+              Across 2 policies
+            </p>
           </div>
+          <IconChip icon={CheckCircle} tone="success" size="md" />
+        </div>
+
+        {/* Payments made */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <p className="text-[12.5px] font-medium text-muted-foreground">
+              Payments made
+            </p>
+            <p
+              className="font-extrabold text-[26px] leading-none text-foreground"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {isLoading ? "—" : paidCount}
+            </p>
+            <p className="text-[11.5px] text-muted-foreground">On time</p>
+          </div>
+          <IconChip icon={Receipt} tone="primary" size="md" />
+        </div>
+
+        {/* Methods */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div className="flex flex-col gap-1">
+            <p className="text-[12.5px] font-medium text-muted-foreground">
+              Methods
+            </p>
+            <p
+              className="font-extrabold text-[26px] leading-none text-foreground"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              3
+            </p>
+            <p className="text-[11.5px] text-muted-foreground">
+              Momo, card, bank
+            </p>
+          </div>
+          <IconChip icon={Wallet} tone="info" size="md" />
+        </div>
+      </div>
+
+      {/* SECTION 3 — Payment history */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center px-[22px] pt-[22px] pb-2">
+          <h3 className="flex items-center gap-2 font-extrabold text-[16.5px] text-foreground">
+            <Receipt size={19} className="text-primary" />
+            Payment history
+          </h3>
           <Button
             variant="outline"
             size="sm"
-            className="shrink-0 border-[color:var(--color-brand-accent)]/40 text-[color:var(--color-brand-accent)] hover:bg-[color:var(--color-brand-accent)]/10"
+            onClick={handleExport}
+            disabled={!payments?.length}
           >
-            Enable
+            <Download className="h-3.5 w-3.5" />
+            Export
           </Button>
         </div>
-      )}
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Total Payments"
-          value={isLoading ? "—" : payments?.length || 0}
-          icon={CreditCard}
-          tone="primary"
-          isLoading={isLoading}
-        />
-        <StatCard
-          label="Total Paid (YTD)"
-          value={isLoading ? "—" : `ZMW ${totalPaid.toLocaleString()}`}
-          icon={CreditCard}
-          tone="success"
-          isLoading={isLoading}
-        />
-        <StatCard
-          label="Next Payment Due"
-          value="Nov 1, 2025"
-          sublabel="ZMW 2,050"
-          icon={CreditCard}
-          tone="warning"
-          isLoading={isLoading}
-        />
-      </div>
-
-      {/* Payment History Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CreditCard className="h-4 w-4 text-primary" />
-            Payment History
-          </CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="pr-4">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="pr-4"
-              onClick={handleExport}
-              disabled={!payments?.length}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
+        {/* Table */}
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -228,18 +310,21 @@ export function PaymentsPage() {
               ) : payments && payments.length > 0 ? (
                 payments.map((payment) => (
                   <TableRow key={payment.id}>
-                    <TableCell>{payment.date}</TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="text-muted-foreground text-sm">
+                      {payment.date}
+                    </TableCell>
+                    <TableCell className="font-medium text-sm">
                       {payment.policyNumber}
                     </TableCell>
-                    <TableCell>{payment.amount}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(payment.status)}>
-                        {payment.status}
-                      </Badge>
+                    <TableCell
+                      className="font-bold text-sm"
+                      style={{ fontFamily: "var(--font-serif)" }}
+                    >
+                      {payment.amount}
                     </TableCell>
+                    <TableCell>{statusBadge(payment.status)}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1.5 text-sm">
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         {methodIcon(payment.method)}
                         {methodLabel(payment.method)}
                       </div>
@@ -255,8 +340,8 @@ export function PaymentsPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

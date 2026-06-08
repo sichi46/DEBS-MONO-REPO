@@ -1,25 +1,119 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+﻿import { useParams, useNavigate, Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
-  ArrowLeft,
   Shield,
-  CheckCircle,
-  Phone,
+  ShieldCheck,
+  Plus,
+  Headphones,
   Car,
   Home,
   Plane,
   Briefcase,
+  Heart,
+  ArrowLeft,
+  Star,
   type LucideIcon,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
 import { mockAvailablePolicies } from "@/lib/mock-data";
 
+// ---------- icon / gradient maps ----------
 const policyIconMap: Record<string, LucideIcon> = {
   car: Car,
   home: Home,
   plane: Plane,
   briefcase: Briefcase,
+  heart: Heart,
+};
+
+type GradientTone = "blue" | "green" | "amber" | "purple" | "rose";
+const cardGradients: GradientTone[] = [
+  "blue",
+  "green",
+  "amber",
+  "purple",
+  "rose",
+];
+
+const gradientMap: Record<GradientTone, string> = {
+  blue: "linear-gradient(135deg, #0057B7 0%, #003A7D 100%)",
+  green: "linear-gradient(135deg, #22C55E 0%, #15803D 100%)",
+  amber: "linear-gradient(135deg, #F59E0B 0%, #B45309 100%)",
+  purple: "linear-gradient(135deg, #8B5CF6 0%, #5B21B6 100%)",
+  rose: "linear-gradient(135deg, #EC4899 0%, #9D174D 100%)",
+};
+
+const featuresMap: Record<string, string[]> = {
+  "avail-001": [
+    "Collision and comprehensive cover",
+    "Third-party liability",
+    "Theft and fire protection",
+    "24/7 roadside assistance",
+    "No-claim bonus",
+    "Coverage across Zambia",
+  ],
+  "avail-002": [
+    "Structure and rebuild cover",
+    "Contents and valuables",
+    "Fire, flood and natural disasters",
+    "Theft and burglary protection",
+    "Temporary accommodation",
+    "Nationwide coverage",
+  ],
+  "avail-003": [
+    "Trip cancellation cover",
+    "Emergency medical expenses",
+    "Lost or delayed luggage",
+    "Flight delay compensation",
+    "Personal accident cover",
+    "24/7 travel assistance",
+  ],
+  "avail-004": [
+    "Property and equipment cover",
+    "Public liability protection",
+    "Business interruption cover",
+    "Employee liability",
+    "Cyber risk cover",
+    "Flexible premium options",
+  ],
+};
+
+const defaultFeatures = [
+  "Comprehensive coverage",
+  "Flexible payment options",
+  "Quick claims process",
+  "24/7 customer support",
+  "No waiting period",
+  "Coverage across all provinces",
+];
+
+const testimonialMap: Record<string, { quote: string; author: string }> = {
+  "avail-001": {
+    quote:
+      "Filing my claim after an accident was seamless. DEBS had me back on the road within days.",
+    author: "Samuel K., Lusaka",
+  },
+  "avail-002": {
+    quote:
+      "When our roof was damaged in a storm, DEBS covered the repairs fully. Incredible service.",
+    author: "Ruth M., Kitwe",
+  },
+  "avail-003": {
+    quote:
+      "Lost my luggage on a trip to Johannesburg. DEBS reimbursed me within 48 hours.",
+    author: "Grace P., Lusaka",
+  },
+  "avail-004": {
+    quote:
+      "DEBS business cover gives us confidence to grow. Claims handled professionally every time.",
+    author: "David T., Ndola",
+  },
+};
+
+const defaultTestimonial = {
+  quote:
+    "DEBS Insurance gave me real peace of mind. The team was professional and my claim was handled quickly.",
+  author: "Grace P., Lusaka",
 };
 
 export function PolicyInfoPage() {
@@ -27,6 +121,7 @@ export function PolicyInfoPage() {
   const navigate = useNavigate();
 
   const policy = mockAvailablePolicies.find((p) => p.id === policyId);
+  const policyIndex = mockAvailablePolicies.findIndex((p) => p.id === policyId);
 
   if (!policy) {
     return (
@@ -40,144 +135,151 @@ export function PolicyInfoPage() {
     );
   }
 
-  // Mock benefits for demonstration
-  const benefits = [
-    "Comprehensive coverage for peace of mind",
-    "Flexible payment options (monthly, quarterly, annually)",
-    "Quick and easy claims process",
-    "24/7 customer support",
-    "No waiting period for accidents",
-    "Coverage across all provinces",
-  ];
+  const Icon = policyIconMap[policy.icon] ?? Briefcase;
+  const tone = cardGradients[policyIndex % cardGradients.length];
+  const grad = gradientMap[tone];
+  const isPopular = policyIndex === 1;
+  const features = featuresMap[policy.id] ?? defaultFeatures;
+  const testimonial = testimonialMap[policy.id] ?? defaultTestimonial;
 
   return (
-    <div className="space-y-6" data-testid="policy-info-page">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="secondary"
-          onClick={() => navigate("/dashboard/browse")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-            {(() => {
-              const Icon = policyIconMap[policy.icon];
-              return Icon ? <Icon className="h-7 w-7 text-primary" /> : null;
-            })()}
+    <div className="space-y-[18px]" data-testid="policy-info-page">
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => navigate("/dashboard/browse")}
+        className="gap-1.5"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-[18px] items-start">
+        {/* LEFT */}
+        <div className="grid gap-[18px]">
+          {/* Hero card */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div
+              className="relative flex items-center justify-center w-full"
+              style={{ aspectRatio: "21/9", background: grad }}
+            >
+              <Icon className="text-white" style={{ width: 64, height: 64 }} />
+              {isPopular && (
+                <span className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1 rounded-full">
+                  Popular
+                </span>
+              )}
+            </div>
+            <div className="p-[26px]">
+              {isPopular && (
+                <span className="inline-block mb-3 text-[11px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+                  Most popular
+                </span>
+              )}
+              <h1 className="text-[26px] font-extrabold leading-tight">
+                {policy.type}
+              </h1>
+              <p className="mt-2 text-[15px] text-muted-foreground leading-relaxed">
+                {policy.description} DEBS Insurance provides comprehensive{" "}
+                {policy.type.toLowerCase()} coverage designed to protect you and
+                your loved ones with competitive premiums and extensive coverage
+                options.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">{policy.type}</h2>
-            <p className="text-muted-foreground">
-              Starting from {policy.startingPremium}
+
+          {/* What is covered */}
+          <div className="bg-card border border-border rounded-2xl p-[22px]">
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <span className="font-semibold text-[15px]">What is covered</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {features.map((feat, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/10">
+                    <ShieldCheck className="h-3 w-3 text-success" />
+                  </span>
+                  <span className="text-[14px] leading-snug">{feat}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Testimonial */}
+          <div className="bg-muted rounded-2xl p-[22px]">
+            <div className="flex gap-0.5 mb-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className="h-4 w-4"
+                  style={{ color: "#F59E0B", fill: "#F59E0B" }}
+                />
+              ))}
+            </div>
+            <p
+              className="text-[15px] italic leading-relaxed"
+              style={{ fontFamily: "var(--font-serif, Georgia, serif)" }}
+            >
+              &ldquo;{testimonial.quote}&rdquo;
+            </p>
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              &mdash; {testimonial.author}
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Description */}
-      <Card>
-        <CardHeader>
-          <CardTitle>About This Policy</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-lg">{policy.description}</p>
-          <p className="mt-4 text-muted-foreground">
-            DEBS Insurance provides comprehensive {policy.type.toLowerCase()}{" "}
-            coverage designed to protect you and your loved ones. Our policies
-            are tailored to meet your specific needs with competitive premiums
-            and extensive coverage options.
-          </p>
-        </CardContent>
-      </Card>
+        {/* RIGHT sticky */}
+        <div className="sticky top-[90px]">
+          <div className="bg-card border border-border rounded-2xl p-[22px]">
+            <p className="text-[13px] text-muted-foreground mb-1">
+              Starts from
+            </p>
+            <p
+              className="text-[34px] font-extrabold text-primary leading-none"
+              style={{ fontFamily: "var(--font-serif, Georgia, serif)" }}
+            >
+              {policy.startingPremium.split("/")[0]}
+              <span className="text-[16px] font-normal text-muted-foreground ml-1">
+                /{policy.startingPremium.split("/")[1] ?? "mo"}
+              </span>
+            </p>
 
-      {/* Benefits */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-success" />
-            Key Benefits
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {benefits.map((benefit, index) => (
-              <li key={index} className="flex items-start gap-2">
-                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                <span>{benefit}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Pricing Tiers */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Coverage Options</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border p-4">
-              <h4 className="font-semibold">Basic</h4>
-              <p className="mt-1 text-2xl font-bold text-primary">
-                {policy.startingPremium}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Essential coverage
-              </p>
+            <div className="mt-5 flex flex-col gap-3">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() =>
+                  toast.success(
+                    "Plan added! An advisor will reach out shortly.",
+                  )
+                }
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Get this plan
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={() => toast.info("Connecting you to an agent...")}
+              >
+                <Headphones className="h-4 w-4 mr-2" />
+                Talk to an agent
+              </Button>
             </div>
-            <div className="rounded-lg border-2 border-primary bg-primary/5 p-4">
-              <div className="mb-1 text-xs font-semibold text-primary">
-                POPULAR
-              </div>
-              <h4 className="font-semibold">Standard</h4>
-              <p className="mt-1 text-2xl font-bold text-primary">
-                ZMW {parseInt(policy.startingPremium.replace(/\D/g, "")) * 1.5}
-                /mo
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Recommended coverage
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <h4 className="font-semibold">Premium</h4>
-              <p className="mt-1 text-2xl font-bold text-primary">
-                ZMW {parseInt(policy.startingPremium.replace(/\D/g, "")) * 2}/mo
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Maximum protection
-              </p>
+
+            <div className="flex items-center justify-center gap-1.5 mt-4">
+              <ShieldCheck
+                className="shrink-0"
+                style={{ width: 15, height: 15, color: "var(--color-success)" }}
+              />
+              <span className="text-[12px] text-muted-foreground">
+                No medical exam &middot; cancel anytime
+              </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* CTA */}
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <Button
-          className="flex-1 pr-5"
-          size="lg"
-          onClick={() =>
-            toast.success("Quote request sent! We'll contact you shortly.")
-          }
-        >
-          Get a Quote
-        </Button>
-        <Button
-          variant="outline"
-          className="flex-1 pr-5"
-          size="lg"
-          onClick={() => {
-            window.location.href = "tel:+260211123456";
-            toast.success("Connecting you to an advisor...");
-          }}
-        >
-          <Phone className="mr-2 h-4 w-4" />
-          Talk to an Advisor
-        </Button>
+        </div>
       </div>
     </div>
   );

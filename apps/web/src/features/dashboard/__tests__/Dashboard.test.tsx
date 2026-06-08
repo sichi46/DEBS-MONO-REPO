@@ -181,18 +181,19 @@ describe("DashboardOverview", () => {
   it("displays welcome message", async () => {
     renderWithProviders(<DashboardOverview />);
     await waitFor(() => {
-      // V2: hero card says "Welcome back" as a label
-      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+      // V2: hero card uses time-based greeting
+      expect(
+        screen.getByText(/Good (morning|afternoon|evening)/i),
+      ).toBeInTheDocument();
     });
   });
 
   it("renders quick action buttons", async () => {
     renderWithProviders(<DashboardOverview />);
     await waitFor(() => {
-      // "New Claim" appears in both quick actions and ClaimCard header
-      expect(screen.getAllByText("New Claim").length).toBeGreaterThan(0);
-      expect(screen.getByText("Make Payment")).toBeInTheDocument();
-      expect(screen.getByText("View Policies")).toBeInTheDocument();
+      // V2: hero has "File a claim" and "Browse plans" glass buttons
+      expect(screen.getByText("File a claim")).toBeInTheDocument();
+      expect(screen.getByText("Browse plans")).toBeInTheDocument();
     });
   });
 

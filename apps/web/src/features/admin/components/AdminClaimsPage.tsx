@@ -1,22 +1,16 @@
 import { useState } from "react";
 import {
   ClipboardList,
-  Search,
-  MoreHorizontal,
-  Eye,
+  Clock,
   CheckCircle,
   XCircle,
-  Clock,
-  Download,
+  Check,
   Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/ui/stat-card";
+import { IconChip } from "@/components/ui/icon-chip";
 import {
   Table,
   TableBody,
@@ -26,21 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   useAdminClaims,
   useAdminStats,
   useUpdateClaimStatus,
@@ -48,20 +27,18 @@ import {
 
 type ClaimStatus = "Approved" | "Pending" | "Under Review" | "Rejected";
 
-function getStatusVariant(
-  status: ClaimStatus,
-): "default" | "secondary" | "destructive" | "outline" {
+function getStatusBadgeClass(status: ClaimStatus): string {
   switch (status) {
     case "Approved":
-      return "default";
+      return "border-transparent bg-success/10 text-success";
     case "Pending":
-      return "secondary";
+      return "border-transparent bg-warning/10 text-warning";
     case "Under Review":
-      return "outline";
+      return "border-transparent bg-primary/10 text-primary";
     case "Rejected":
-      return "destructive";
+      return "border-transparent bg-destructive/10 text-destructive";
     default:
-      return "secondary";
+      return "border-transparent bg-muted text-muted-foreground";
   }
 }
 
@@ -72,69 +49,59 @@ function derivePriority(amountStr: string): "high" | "medium" | "low" {
   return "low";
 }
 
-const priorityChipClass: Record<string, string> = {
-  high: "bg-destructive/10 text-destructive border-destructive/20",
-  medium: "bg-warning/10 text-warning border-warning/20",
-  low: "bg-success/10 text-success border-success/20",
-};
+function getAvatarGradient(priority: "high" | "medium" | "low"): string {
+  if (priority === "high") return "linear-gradient(140deg,#E7A24A,#B9701B)";
+  return "linear-gradient(140deg,#2D6BD4,#0D3C85)";
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 export function AdminClaimsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [queueFilter, setQueueFilter] = useState<"queue" | "settled" | "all">(
+    "queue",
+  );
+
+  // Derive API status filter from queue tab
+  const apiStatusFilter =
+    queueFilter === "queue"
+      ? undefined // fetch all, filter client-side
+      : queueFilter === "settled"
+        ? undefined
+        : undefined;
 
   const { data, isLoading } = useAdminClaims({
-    status: statusFilter !== "all" ? statusFilter : undefined,
-    search: searchQuery || undefined,
+    status: apiStatusFilter,
   });
   const { data: stats } = useAdminStats();
   const updateClaimStatus = useUpdateClaimStatus();
 
-  const claims = data?.claims || [];
-  const total = data?.pagination?.total ?? 0;
+  const allClaims: any[] = data?.claims || [];
 
-  const handleExport = () => {
-    if (!claims.length) return;
-    const headers = [
-      "Claim ID",
-      "Customer",
-      "Email",
-      "Policy",
-      "Type",
-      "Amount",
-      "Status",
-    ];
-    const rows = claims.map((c: any) => [
-      c.claimId,
-      c.userName,
-      c.userEmail,
-      c.policyNumber,
-      c.claimType,
-      c.claimAmount,
-      c.status,
-    ]);
-    const csv = [headers, ...rows]
-      .map((row) =>
-        row
-          .map((val: string) => `"${String(val).replace(/"/g, '""')}"`)
-          .join(","),
-      )
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `claims-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const filteredClaims = allClaims.filter((c: any) => {
+    if (queueFilter === "queue")
+      return c.status === "Pending" || c.status === "Under Review";
+    if (queueFilter === "settled")
+      return c.status === "Approved" || c.status === "Rejected";
+    return true;
+  });
 
-  const handleClaimAction = (claimId: string, status: string) => {
+  const handleClaimAction = (
+    claimId: string,
+    status: "APPROVED" | "REJECTED",
+  ) => {
     updateClaimStatus.mutate(
       { id: claimId, status },
       {
         onSuccess: () =>
           toast.success(
-            `Claim ${status === "APPROVED" ? "approved" : "rejected"}`,
+            status === "APPROVED" ? "Claim approved" : "Claim rejected",
           ),
         onError: (err: Error) =>
           toast.error(err.message || "Failed to update claim"),
@@ -142,249 +109,243 @@ export function AdminClaimsPage() {
     );
   };
 
-  const [queueFilter, setQueueFilter] = useState<"queue" | "settled" | "all">(
-    "queue",
-  );
-
   return (
-    <div className="space-y-6 animate-fade-up" data-testid="admin-claims-page">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-muted-foreground">
-            Review and process insurance claims
-          </p>
+    <div className="space-y-[18px]" data-testid="admin-claims-page">
+      {/* KPI grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-[18px]">
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Total Claims
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.totalClaims ?? 0}
+            </p>
+          </div>
+          <IconChip icon={ClipboardList} tone="primary" size="md" />
         </div>
-        <Button
-          variant="outline"
-          className="pr-5"
-          onClick={handleExport}
-          disabled={!claims.length}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export Report
-        </Button>
+
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Pending
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.pendingClaims ?? 0}
+            </p>
+          </div>
+          <IconChip icon={Clock} tone="warning" size="md" />
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Approved
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.approvedClaims ?? 0}
+            </p>
+          </div>
+          <IconChip icon={CheckCircle} tone="success" size="md" />
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Rejected
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {stats?.rejectedClaims ?? 0}
+            </p>
+          </div>
+          <IconChip icon={XCircle} tone="danger" size="md" />
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Claims"
-          value={stats?.totalClaims ?? 0}
-          icon={ClipboardList}
-          tone="primary"
-        />
-        <StatCard
-          label="Pending"
-          value={stats?.pendingClaims ?? 0}
-          icon={Clock}
-          tone="warning"
-        />
-        <StatCard
-          label="Approved"
-          value={stats?.approvedClaims ?? 0}
-          icon={CheckCircle}
-          tone="success"
-        />
-        <StatCard
-          label="Rejected"
-          value={stats?.rejectedClaims ?? 0}
-          icon={XCircle}
-          tone="danger"
-        />
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {(["queue", "settled", "all"] as const).map((f) => (
+      {/* Segmented control */}
+      <div className="bg-muted rounded-lg p-1 flex gap-1 w-[380px] max-w-full">
+        {(["queue", "settled", "all"] as const).map((tab) => (
           <button
-            key={f}
-            onClick={() => setQueueFilter(f)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${
-              queueFilter === f
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+            key={tab}
+            onClick={() => setQueueFilter(tab)}
+            className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-colors capitalize ${
+              queueFilter === tab
+                ? "bg-card text-primary shadow-sm"
+                : "text-muted-foreground"
             }`}
           >
-            {f === "queue" ? "Queue" : f === "settled" ? "Settled" : "All"}
+            {tab === "queue" ? "Queue" : tab === "settled" ? "Settled" : "All"}
           </button>
         ))}
       </div>
 
-      {/* Claims Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-primary" />
-            All Claims
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Search and Filters */}
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by claim ID, customer, or policy..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Under Review">Under Review</SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+      {/* Table card */}
+      <div className="bg-card border border-border rounded-2xl">
+        <div className="p-[8px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Claim ID</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Customer
-                      </TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        Policy
-                      </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Type
-                      </TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {claims.length > 0 ? (
-                      claims.map((claim: any) => (
-                        <TableRow key={claim.claimId}>
-                          <TableCell className="font-medium">
-                            {claim.claimId}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <div>
-                              <p className="font-medium">{claim.userName}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {claim.userEmail}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <div>
-                              <p>{claim.policyType}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {claim.policyNumber}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {claim.claimType}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {claim.claimAmount}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getStatusVariant(claim.status)}>
-                              {claim.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`text-xs font-medium px-2 py-0.5 rounded-full border ${priorityChipClass[derivePriority(claim.claimAmount)]}`}
-                            >
-                              {derivePriority(claim.claimAmount)}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Claim</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Customer
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredClaims.length > 0 ? (
+                  filteredClaims.map((claim: any) => {
+                    const priority = derivePriority(claim.claimAmount ?? "0");
+                    const isActionable =
+                      claim.status === "Pending" ||
+                      claim.status === "Under Review";
+                    const initials = getInitials(claim.userName || "");
+
+                    return (
+                      <TableRow key={claim.claimId}>
+                        {/* Claim ID */}
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {priority === "high" && (
+                              <span
+                                className="h-2 w-2 rounded-full bg-destructive shrink-0"
+                                title="High priority"
+                              />
+                            )}
+                            <span className="font-bold text-[13px]">
+                              {claim.claimId}
                             </span>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </DropdownMenuItem>
-                                {(claim.status === "Pending" ||
-                                  claim.status === "Under Review") && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-success"
-                                      onClick={() =>
-                                        handleClaimAction(
-                                          claim.claimId,
-                                          "APPROVED",
-                                        )
-                                      }
-                                    >
-                                      <CheckCircle className="mr-2 h-4 w-4" />
-                                      Approve Claim
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() =>
-                                        handleClaimAction(
-                                          claim.claimId,
-                                          "REJECTED",
-                                        )
-                                      }
-                                    >
-                                      <XCircle className="mr-2 h-4 w-4" />
-                                      Reject Claim
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <ClipboardList className="h-8 w-8 text-muted-foreground/50" />
-                            <p className="text-muted-foreground">
-                              No claims found
-                            </p>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
 
-              <p className="mt-4 text-sm text-muted-foreground">
-                Showing {claims.length} of {total} claims
-              </p>
-            </>
+                        {/* Customer */}
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center gap-[9px]">
+                            <div
+                              className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
+                              style={{
+                                background: getAvatarGradient(priority),
+                              }}
+                            >
+                              {initials}
+                            </div>
+                            <span className="text-[13px] font-medium">
+                              {claim.userName}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* Type */}
+                        <TableCell className="hidden lg:table-cell text-[13px]">
+                          {claim.claimType}
+                        </TableCell>
+
+                        {/* Amount */}
+                        <TableCell>
+                          <span
+                            className="font-bold text-[14px]"
+                            style={{ fontFamily: "var(--font-serif)" }}
+                          >
+                            {claim.claimAmount}
+                          </span>
+                        </TableCell>
+
+                        {/* Date */}
+                        <TableCell className="hidden sm:table-cell text-muted-foreground text-[13px]">
+                          {claim.createdAt
+                            ? new Date(claim.createdAt).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "2-digit",
+                                },
+                              )
+                            : (claim.date ?? "—")}
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(claim.status as ClaimStatus)}`}
+                          >
+                            {claim.status}
+                          </span>
+                        </TableCell>
+
+                        {/* Action */}
+                        <TableCell>
+                          {isActionable ? (
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  handleClaimAction(claim.claimId, "REJECTED")
+                                }
+                                disabled={updateClaimStatus.isPending}
+                              >
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleClaimAction(claim.claimId, "APPROVED")
+                                }
+                                disabled={updateClaimStatus.isPending}
+                                className="gap-1"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                                Approve
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-[12.5px] text-muted-foreground">
+                              Settled
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <ClipboardList className="h-8 w-8 text-muted-foreground/40" />
+                        <p className="text-muted-foreground text-sm">
+                          No claims found
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

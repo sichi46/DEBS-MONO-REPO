@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+﻿import { Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 // Layout
@@ -21,9 +21,9 @@ import {
 // Dashboard Features
 import { DashboardOverview } from "./features/dashboard";
 import { PoliciesPage, PolicyDetailsPage } from "./features/policies";
-import { ClaimsPage, ClaimDetailsPage } from "./features/claims";
+import { ClaimsPage, ClaimDetailsPage, NewClaimPage } from "./features/claims";
 import { BrowsePoliciesPage, PolicyInfoPage } from "./features/browse";
-import { PaymentsPage } from "./features/payments";
+import { PaymentsPage, MakePaymentPage } from "./features/payments";
 import { SettingsPage } from "./features/settings";
 
 // Admin imports
@@ -90,10 +90,12 @@ function App() {
               element={<PolicyDetailsPage />}
             />
             <Route path="claims" element={<ClaimsPage />} />
+            <Route path="claims/new" element={<NewClaimPage />} />
             <Route path="claims/:claimId" element={<ClaimDetailsPage />} />
             <Route path="browse" element={<BrowsePoliciesPage />} />
             <Route path="browse/:policyId" element={<PolicyInfoPage />} />
             <Route path="payments" element={<PaymentsPage />} />
+            <Route path="payments/pay" element={<MakePaymentPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

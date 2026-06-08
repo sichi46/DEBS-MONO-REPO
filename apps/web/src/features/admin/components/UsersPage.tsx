@@ -1,21 +1,16 @@
 import { useState } from "react";
 import {
   Users,
-  Search,
-  MoreHorizontal,
-  Mail,
-  Phone,
-  Eye,
-  Ban,
   CheckCircle,
+  Clock,
+  UserPlus,
+  MoreHorizontal,
   Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { IconChip } from "@/components/ui/icon-chip";
 import {
   Table,
   TableBody,
@@ -24,58 +19,64 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useAdminUsers, useUpdateUserStatus } from "../hooks/useAdmin";
+import { useAdminUsers } from "../hooks/useAdmin";
 
-type UserStatus = "active" | "inactive" | "suspended";
-type UserRole = "admin" | "user" | "agent";
+type UserStatus = "active" | "inactive" | "suspended" | "pending";
+type UserRole = "admin" | "agent" | "user";
 
-function getStatusVariant(
-  status: UserStatus,
-): "default" | "secondary" | "destructive" {
-  switch (status) {
-    case "active":
-      return "default";
-    case "inactive":
-      return "secondary";
-    case "suspended":
-      return "destructive";
-    default:
-      return "secondary";
-  }
+function getAvatarGradient(role: UserRole): string {
+  if (role === "admin") return "linear-gradient(140deg,#2D6BD4,#0D3C85)";
+  if (role === "agent") return "linear-gradient(140deg,#E7A24A,#B9701B)";
+  return "linear-gradient(140deg,#34B978,#157A45)";
 }
 
-function getRoleVariant(role: UserRole): "default" | "secondary" | "outline" {
-  switch (role) {
-    case "admin":
-      return "default";
-    case "agent":
-      return "secondary";
-    case "user":
-      return "outline";
-    default:
-      return "outline";
-  }
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function StatusBadge({ status }: { status: UserStatus }) {
+  const map: Record<UserStatus, { label: string; dot: string; cls: string }> = {
+    active: {
+      label: "Active",
+      dot: "bg-[var(--color-success)]",
+      cls: "border-transparent bg-success/10 text-success",
+    },
+    inactive: {
+      label: "Inactive",
+      dot: "bg-muted-foreground",
+      cls: "border-transparent bg-muted text-muted-foreground",
+    },
+    suspended: {
+      label: "Suspended",
+      dot: "bg-destructive",
+      cls: "border-transparent bg-destructive/10 text-destructive",
+    },
+    pending: {
+      label: "Pending",
+      dot: "bg-warning",
+      cls: "border-transparent bg-warning/10 text-warning",
+    },
+  };
+  const cfg = map[status] ?? map.inactive;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${cfg.cls}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  );
 }
 
 export function UsersPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery] = useState("");
+  const [roleFilter] = useState<string>("all");
+  const [statusFilter] = useState<string>("all");
 
   const { data, isLoading } = useAdminUsers({
     search: searchQuery || undefined,
@@ -83,299 +84,208 @@ export function UsersPage() {
     status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
-  const updateStatus = useUpdateUserStatus();
-
   const users = data?.users || [];
-  const totalUsers = data?.pagination?.total ?? 0;
+  const totalUsers = data?.pagination?.total ?? users.length;
   const activeUsers = users.filter((u: any) => u.status === "active").length;
-  const customers = users.filter((u: any) => u.role === "user").length;
-  const admins = users.filter(
-    (u: any) => u.role === "admin" || u.role === "agent",
+  const pendingInactive = users.filter(
+    (u: any) => u.status === "inactive" || u.status === "pending",
   ).length;
 
-  const handleStatusUpdate = (userId: string, status: string) => {
-    updateStatus.mutate(
-      { id: userId, status },
-      {
-        onSuccess: () => toast.success("User status updated"),
-        onError: (err: Error) =>
-          toast.error(err.message || "Failed to update status"),
-      },
-    );
-  };
-
   return (
-    <div className="space-y-6" data-testid="users-page">
-      {/* Header */}
-      <div>
-        <p className="text-muted-foreground">
-          Manage users, roles, and permissions
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold">{totalUsers}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <CheckCircle className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold">{activeUsers}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Customers</p>
-                <p className="text-2xl font-bold">{customers}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-                <Users className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Admin & Agents</p>
-                <p className="text-2xl font-bold">{admins}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            All Users
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Search and Filters */}
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by name or email..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="user">Customer</SelectItem>
-                <SelectItem value="agent">Agent</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
+    <div className="space-y-[18px]" data-testid="users-page">
+      {/* KPI grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[18px]">
+        {/* Total users */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Total Users
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {totalUsers}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1">
+              All registered users
+            </p>
           </div>
+          <IconChip icon={Users} tone="primary" size="md" />
+        </div>
 
+        {/* Active */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Active
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {activeUsers}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1">
+              Currently active
+            </p>
+          </div>
+          <IconChip icon={CheckCircle} tone="success" size="md" />
+        </div>
+
+        {/* Pending / Inactive */}
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex justify-between items-start">
+          <div>
+            <p className="text-[13px] text-muted-foreground font-medium mb-1">
+              Pending / Inactive
+            </p>
+            <p
+              className="text-[28px] font-bold leading-none"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              {pendingInactive}
+            </p>
+            <p className="text-[12px] text-muted-foreground mt-1">
+              Awaiting action
+            </p>
+          </div>
+          <IconChip icon={Clock} tone="warning" size="md" />
+        </div>
+      </div>
+
+      {/* Table card */}
+      <div className="bg-card border border-border rounded-2xl">
+        {/* Toolbar */}
+        <div className="flex justify-between items-center gap-4 flex-wrap p-[22px] pb-0">
+          <div>
+            <span className="text-[13.5px] text-muted-foreground font-semibold">
+              {users.length} users
+            </span>
+            {searchQuery && (
+              <span className="text-[13.5px] text-muted-foreground font-semibold ml-1">
+                matching &ldquo;{searchQuery}&rdquo;
+              </span>
+            )}
+          </div>
+          <Button size="sm" className="gap-1.5">
+            <UserPlus className="h-4 w-4" />
+            Add user
+          </Button>
+        </div>
+
+        {/* Table */}
+        <div className="p-[8px] pt-[14px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              {/* Users Table */}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Role
-                      </TableHead>
-                      <TableHead className="hidden sm:table-cell">
-                        Status
-                      </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Policies
-                      </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Last Active
-                      </TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.length > 0 ? (
-                      users.map((user: any) => (
-                        <TableRow key={user.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold shrink-0">
-                                {user.avatarInitials}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium truncate">
-                                  {user.name}
-                                </p>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {user.email}
-                                </p>
-                              </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Policies</TableHead>
+                  <TableHead className="hidden sm:table-cell">Joined</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[50px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.length > 0 ? (
+                  users.map((user: any) => {
+                    const role: UserRole =
+                      user.role === "admin"
+                        ? "admin"
+                        : user.role === "agent"
+                          ? "agent"
+                          : "user";
+                    const initials =
+                      user.avatarInitials || getInitials(user.name || "");
+                    const status: UserStatus = (
+                      user.status ?? "inactive"
+                    ).toLowerCase() as UserStatus;
+                    return (
+                      <TableRow key={user.id}>
+                        {/* User cell */}
+                        <TableCell>
+                          <div className="flex items-center gap-[11px]">
+                            <div
+                              className="h-10 w-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0"
+                              style={{ background: getAvatarGradient(role) }}
+                            >
+                              {initials}
                             </div>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <Badge
-                              variant={getRoleVariant(user.role)}
-                              className="capitalize"
-                            >
-                              {user.role}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge
-                              variant={getStatusVariant(user.status)}
-                              className="capitalize"
-                            >
-                              {user.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {user.policiesCount}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell text-muted-foreground">
-                            {user.lastActive}
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Actions</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    toast(`Loading ${user.name}'s details...`, {
-                                      icon: "👤",
-                                    })
-                                  }
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    window.open(
-                                      `mailto:${user.email}`,
-                                      "_blank",
-                                    );
-                                  }}
-                                >
-                                  <Mail className="mr-2 h-4 w-4" />
-                                  Send Email
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    window.open(
-                                      `tel:${user.phone || ""}`,
-                                      "_blank",
-                                    );
-                                  }}
-                                >
-                                  <Phone className="mr-2 h-4 w-4" />
-                                  Call User
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {user.status === "suspended" ? (
-                                  <DropdownMenuItem
-                                    className="text-success"
-                                    onClick={() =>
-                                      handleStatusUpdate(user.id, "ACTIVE")
-                                    }
-                                  >
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Reactivate
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() =>
-                                      handleStatusUpdate(user.id, "SUSPENDED")
-                                    }
-                                  >
-                                    <Ban className="mr-2 h-4 w-4" />
-                                    Suspend
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <Users className="h-8 w-8 text-muted-foreground/50" />
-                            <p className="text-muted-foreground">
-                              No users found
-                            </p>
+                            <div className="min-w-0">
+                              <p className="font-bold text-[14px] truncate leading-tight">
+                                {user.name}
+                              </p>
+                              <p className="text-[12px] text-muted-foreground truncate">
+                                {user.email}
+                              </p>
+                            </div>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
 
-              {/* Results count */}
-              <p className="mt-4 text-sm text-muted-foreground">
-                Showing {users.length} of {totalUsers} users
-              </p>
-            </>
+                        {/* Policies */}
+                        <TableCell>
+                          <span
+                            className="font-semibold text-[14px]"
+                            style={{ fontFamily: "var(--font-serif)" }}
+                          >
+                            {user.policiesCount ?? 0}
+                          </span>
+                        </TableCell>
+
+                        {/* Joined */}
+                        <TableCell className="hidden sm:table-cell text-muted-foreground text-[13px]">
+                          {user.createdAt
+                            ? new Date(user.createdAt).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "2-digit",
+                                },
+                              )
+                            : (user.joinedAt ?? "—")}
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>
+                          <StatusBadge status={status} />
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell>
+                          <button
+                            className="w-[34px] h-[34px] border border-border rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                            onClick={() =>
+                              toast.info(`Actions for ${user.name}`)
+                            }
+                          >
+                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Users className="h-8 w-8 text-muted-foreground/40" />
+                        <p className="text-muted-foreground text-sm">
+                          No users found
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
